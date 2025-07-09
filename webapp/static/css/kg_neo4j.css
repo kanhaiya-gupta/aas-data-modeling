@@ -1,0 +1,212 @@
+/* Neo4j Knowledge Graph Additional Styles */
+
+/* Graph visualization enhancements */
+.graph-container {
+    position: relative;
+    overflow: hidden;
+}
+
+#graphVisualization {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Node styling */
+.node {
+    transition: all 0.3s ease;
+}
+
+.node:hover {
+    stroke-width: 3px;
+    stroke: #007bff;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+/* Link styling */
+.link {
+    transition: stroke-opacity 0.3s ease;
+}
+
+.link:hover {
+    stroke-opacity: 1;
+    stroke-width: 3px;
+}
+
+/* Cypher editor enhancements */
+.cypher-editor {
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    border: 2px solid #e2e8f0;
+    transition: border-color 0.3s ease;
+}
+
+.cypher-editor:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+/* Query results styling */
+.query-result {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.query-result table {
+    font-size: 12px;
+}
+
+.query-result th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+/* Stats cards animations */
+.stats-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.nav-tabs .nav-link.active {
+    border-bottom-color: #007bff;
+    background-color: #fff;
+    font-weight: 600;
+}
+
+/* Button enhancements */
+.btn-group .btn {
+    transition: all 0.3s ease;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Status indicator animations */
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Tooltip enhancements */
+.tooltip {
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+/* Chart container styling */
+canvas {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Import form styling */
+#importForm {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .stats-card {
+        margin-bottom: 15px;
+    }
+    
+    .graph-container {
+        margin: 10px 0;
+    }
+    
+    #graphVisualization {
+        height: 400px;
+    }
+    
+    .cypher-editor {
+        min-height: 150px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .cypher-editor {
+        background-color: #1a202c;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    
+    .query-result {
+        background-color: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .query-result th {
+        background-color: #4a5568;
+    }
+} 
