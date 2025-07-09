@@ -56,6 +56,8 @@ class LoaderConfig:
     include_metadata: bool = True
     create_indexes: bool = True
     backup_existing: bool = True
+    separate_file_outputs: bool = False
+    include_filename_in_output: bool = False
 
 class AASXLoader:
     """
@@ -64,16 +66,29 @@ class AASXLoader:
     Supports multiple storage systems including vector databases for RAG.
     """
     
-    def __init__(self, config: Optional[LoaderConfig] = None):
+    def __init__(self, config: Optional[LoaderConfig] = None, source_file: Optional[str] = None):
         """
         Initialize AASX loader.
         
         Args:
             config: Loader configuration
+            source_file: Source AASX file path (for file-specific outputs)
         """
         self.config = config or LoaderConfig()
-        self.output_dir = Path(self.config.output_directory)
-        self.output_dir.mkdir(exist_ok=True)
+        self.source_file = source_file
+        
+        # Create file-specific output directory if configured
+        if self.config.separate_file_outputs and source_file:
+            source_path = Path(source_file)
+            if self.config.include_filename_in_output:
+                file_name = source_path.stem
+                self.output_dir = Path(self.config.output_directory) / file_name
+            else:
+                self.output_dir = Path(self.config.output_directory)
+        else:
+            self.output_dir = Path(self.config.output_directory)
+        
+        self.output_dir.mkdir(exist_ok=True, parents=True)
         
         # Initialize storage systems
         self.vector_db = None
@@ -196,25 +211,33 @@ class AASXLoader:
     def _export_to_files(self, data: Dict[str, Any]) -> List[str]:
         """Export data to various file formats"""
         exported_files = []
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
         try:
             # Export as JSON
-            json_path = self.output_dir / f"aasx_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            json_path = self.output_dir / f"aasx_data_{timestamp}.json"
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             exported_files.append(str(json_path))
             
             # Export as YAML
-            yaml_path = self.output_dir / f"aasx_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
+            yaml_path = self.output_dir / f"aasx_data_{timestamp}.yaml"
             with open(yaml_path, 'w', encoding='utf-8') as f:
                 yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
             exported_files.append(str(yaml_path))
             
             # Export flattened data as CSV
             if 'data' in data and isinstance(data['data'], dict):
-                csv_path = self.output_dir / f"aasx_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                csv_path = self.output_dir / f"aasx_data_{timestamp}.csv"
                 self._export_to_csv(data['data'], csv_path)
                 exported_files.append(str(csv_path))
+            
+            # Export as Graph format (for graph databases)
+            graph_path = self.output_dir / f"aasx_data_{timestamp}_graph.json"
+            graph_data = self._create_graph_format(data)
+            with open(graph_path, 'w', encoding='utf-8') as f:
+                json.dump(graph_data, f, indent=2, ensure_ascii=False)
+            exported_files.append(str(graph_path))
             
             logger.info(f"Exported {len(exported_files)} files")
             
@@ -257,6 +280,60 @@ class AASXLoader:
                 writer.writeheader()
                 writer.writerows(flattened_data)
     
+    def _create_graph_format(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create graph format data for graph databases"""
+        nodes = []
+        edges = []
+        
+        # Add asset nodes
+        for asset in data.get('data', {}).get('assets', []):
+            nodes.append({
+                'id': asset.get('id', ''),
+                'type': 'asset',
+                'properties': {
+                    'id_short': asset.get('id_short', ''),
+                    'description': asset.get('description', ''),
+                    'type': asset.get('type', ''),
+                    'quality_level': asset.get('qi_metadata', {}).get('quality_level', ''),
+                    'compliance_status': asset.get('qi_metadata', {}).get('compliance_status', '')
+                }
+            })
+        
+        # Add submodel nodes
+        for submodel in data.get('data', {}).get('submodels', []):
+            nodes.append({
+                'id': submodel.get('id', ''),
+                'type': 'submodel',
+                'properties': {
+                    'id_short': submodel.get('id_short', ''),
+                    'description': submodel.get('description', ''),
+                    'type': submodel.get('type', ''),
+                    'quality_level': submodel.get('qi_metadata', {}).get('quality_level', ''),
+                    'compliance_status': submodel.get('qi_metadata', {}).get('compliance_status', '')
+                }
+            })
+        
+        # Add relationships as edges
+        for relationship in data.get('data', {}).get('relationships', []):
+            edges.append({
+                'source': relationship.get('source_id', ''),
+                'target': relationship.get('target_id', ''),
+                'type': relationship.get('type', ''),
+                'properties': relationship.get('metadata', {})
+            })
+        
+        return {
+            'format': 'graph',
+            'version': '1.0',
+            'nodes': nodes,
+            'edges': edges,
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'total_nodes': len(nodes),
+                'total_edges': len(edges)
+            }
+        }
+    
     def _load_to_database(self, data: Dict[str, Any]) -> int:
         """Load data to SQLite database"""
         records_loaded = 0
@@ -264,10 +341,15 @@ class AASXLoader:
         try:
             db_path = Path(self.config.database_path)
             
-            # Backup existing database if configured
-            if self.config.backup_existing and db_path.exists():
+            # Create database directory if it doesn't exist
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Only backup on first file if configured
+            if self.config.backup_existing and db_path.exists() and not hasattr(self, '_backup_created'):
                 backup_path = db_path.with_suffix(f'.backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db')
-                db_path.rename(backup_path)
+                import shutil
+                shutil.copy2(db_path, backup_path)
+                self._backup_created = True
                 logger.info(f"Backed up existing database to {backup_path}")
             
             conn = sqlite3.connect(db_path)

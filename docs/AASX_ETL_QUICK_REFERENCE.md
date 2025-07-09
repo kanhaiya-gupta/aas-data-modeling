@@ -138,34 +138,64 @@ rag_path = loader.export_for_rag("rag_dataset.json")
 print(f"RAG dataset: {rag_path}")
 ```
 
+### 7. Graph Database Integration
+```python
+# Import to Neo4j
+from neo4j import GraphDatabase
+
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
+with driver.session() as session:
+    # Load graph data from ETL output
+    with open("aasx_data_20250709_123645_graph.json", "r") as f:
+        graph_data = json.load(f)
+    
+    # Create nodes and relationships
+    for node in graph_data['nodes']:
+        session.run("CREATE (n:Node {id: $id, type: $type})", 
+                   id=node['id'], type=node['type'])
+```
+
 ## Output Formats
 
-### JSON Export
+### JSON Export (General Purpose)
 ```python
-# Export as JSON
+# Export as JSON with full metadata
 transformer = AASXTransformer(
     TransformerConfig(output_formats=['json'])
 )
 result = transformer.transform_aasx_data(data)
 ```
+**Features**: Complete data with quality metrics and metadata
 
-### CSV Export
+### YAML Export (Human-Readable)
 ```python
-# Export as CSV (flattened)
+# Export as YAML for documentation
+transformer = AASXTransformer(
+    TransformerConfig(output_formats=['yaml'])
+)
+result = transformer.transform_aasx_data(data)
+```
+**Features**: Readable format with preserved structure
+
+### CSV Export (Analytics-Ready)
+```python
+# Export as CSV for spreadsheet analysis
 transformer = AASXTransformer(
     TransformerConfig(output_formats=['csv'])
 )
 result = transformer.transform_aasx_data(data)
 ```
+**Features**: Flattened structure with one row per entity
 
-### Graph Export
+### Graph Export (Neo4j/Graph Databases)
 ```python
-# Export as graph format (Neo4j)
+# Export as graph format for Neo4j
 transformer = AASXTransformer(
     TransformerConfig(output_formats=['graph'])
 )
 result = transformer.transform_aasx_data(data)
 ```
+**Features**: Nodes and edges structure for graph analytics
 
 ### Analytics Export
 ```python

@@ -12,7 +12,7 @@ from .aasx_loader import AASXLoader
 from .aasx_processor import AASXProcessor
 from .aasx_transformer import AASXTransformer, TransformationConfig
 from .aasx_etl_pipeline import AASXETLPipeline
-from .dotnet_bridge import DotNetBridge
+from .dotnet_bridge import DotNetAasBridge
 
 __all__ = [
     'AASXLoader',
@@ -20,7 +20,7 @@ __all__ = [
     'AASXTransformer',
     'TransformationConfig',
     'AASXETLPipeline',
-    'DotNetBridge'
+    'DotNetAasBridge'
 ]
 
 __version__ = '1.0.0' 

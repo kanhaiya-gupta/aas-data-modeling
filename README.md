@@ -127,6 +127,8 @@ aas-data-modeling/
 
 - [AAS Integration Guide](docs/AAS_INTEGRATION.md) - Asset Administrative Shell integration
 - [AASX ETL Pipeline](docs/AASX_ETL_PIPELINE.md) - Data processing pipeline
+- [Neo4j Integration](docs/NEO4J_INTEGRATION.md) - Neo4j graph database integration
+- [Neo4j Success Story](docs/NEO4J_INTEGRATION_SUCCESS_STORY.md) - Complete integration journey and results
 - [Graph Neural Networks](graph-neural-network/docs/) - GNN analytics documentation
 - [API Reference](docs/API.md) - Complete API documentation
 - [Architecture Guide](docs/ARCHITECTURE.md) - System architecture

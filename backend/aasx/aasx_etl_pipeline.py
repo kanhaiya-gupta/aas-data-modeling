@@ -69,9 +69,10 @@ class AASXETLPipeline:
             config: ETL pipeline configuration
         """
         self.config = config or ETLPipelineConfig()
-        self.processor = AASXProcessor()
+        # Don't create processor here - create it per file
         self.transformer = AASXTransformer(self.config.transform_config)
-        self.loader = AASXLoader(self.config.load_config)
+        # Don't create loader here - create it per file for file-specific outputs
+        self.loader = None
         
         # Pipeline statistics
         self.stats = {
@@ -130,7 +131,7 @@ class AASXETLPipeline:
             
             # Step 3: Load
             load_start = time.time()
-            load_result = self._load_phase(transform_result['data'])
+            load_result = self._load_phase(transform_result['data'], str(file_path))
             result['load_result'] = load_result
             self.stats['load_time'] += time.time() - load_start
             
@@ -259,23 +260,27 @@ class AASXETLPipeline:
         try:
             logger.info(f"Starting extraction phase for: {file_path}")
             
-            # Extract AASX data
-            extract_result = self.processor.process_aasx_file(str(file_path))
+            # Create processor for this specific file
+            processor = AASXProcessor(str(file_path))
             
-            if extract_result['success']:
+            # Extract AASX data
+            extract_result = processor.process()
+            
+            # Convert to expected format
+            if extract_result and 'error' not in extract_result:
                 logger.info(f"Extraction completed successfully for: {file_path}")
                 return {
                     'success': True,
-                    'data': extract_result['data'],
+                    'data': extract_result,
                     'metadata': extract_result.get('metadata', {}),
-                    'processing_time': extract_result.get('processing_time', 0)
+                    'processing_time': 0  # Will be calculated by caller
                 }
             else:
                 logger.error(f"Extraction failed for: {file_path}")
                 return {
                     'success': False,
                     'error': extract_result.get('error', 'Unknown extraction error'),
-                    'processing_time': extract_result.get('processing_time', 0)
+                    'processing_time': 0
                 }
                 
         except Exception as e:
@@ -294,21 +299,14 @@ class AASXETLPipeline:
             # Transform extracted data
             transform_result = self.transformer.transform_aasx_data(extracted_data)
             
-            if transform_result['success']:
-                logger.info("Transformation completed successfully")
-                return {
-                    'success': True,
-                    'data': transform_result['data'],
-                    'transformations_applied': transform_result.get('transformations_applied', []),
-                    'processing_time': transform_result.get('processing_time', 0)
-                }
-            else:
-                logger.error("Transformation failed")
-                return {
-                    'success': False,
-                    'error': transform_result.get('error', 'Unknown transformation error'),
-                    'processing_time': transform_result.get('processing_time', 0)
-                }
+            # The transformer returns the transformed data directly
+            logger.info("Transformation completed successfully")
+            return {
+                'success': True,
+                'data': transform_result,
+                'transformations_applied': ['cleaning', 'normalization', 'quality_checks', 'enrichment'],
+                'processing_time': 0  # Will be calculated by caller
+            }
                 
         except Exception as e:
             logger.error(f"Transformation phase error: {e}")
@@ -318,13 +316,22 @@ class AASXETLPipeline:
                 'processing_time': 0
             }
     
-    def _load_phase(self, transformed_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _load_phase(self, transformed_data: Dict[str, Any], source_file: Optional[str] = None) -> Dict[str, Any]:
         """Execute loading phase"""
         try:
             logger.info("Starting loading phase")
             
+            # Create file-specific loader if needed
+            if self.config.load_config.separate_file_outputs:
+                loader = AASXLoader(self.config.load_config, source_file)
+            else:
+                # Use shared loader for all files
+                if self.loader is None:
+                    self.loader = AASXLoader(self.config.load_config)
+                loader = self.loader
+            
             # Load transformed data
-            load_result = self.loader.load_aasx_data(transformed_data)
+            load_result = loader.load_aasx_data(transformed_data)
             
             logger.info("Loading completed successfully")
             return {
@@ -356,8 +363,8 @@ class AASXETLPipeline:
         }
         
         try:
-            # Validate processor
-            processor_valid = self.processor is not None
+            # Validate processor (will be created per file)
+            processor_valid = True  # AASXProcessor class is available
             validation_results['components']['processor'] = {
                 'valid': processor_valid,
                 'status': 'OK' if processor_valid else 'FAILED'
@@ -370,18 +377,18 @@ class AASXETLPipeline:
                 'status': 'OK' if transformer_valid else 'FAILED'
             }
             
-            # Validate loader
-            loader_valid = self.loader is not None
+            # Validate loader (created per file, so just check config)
+            loader_config_valid = self.config.load_config is not None
             validation_results['components']['loader'] = {
-                'valid': loader_valid,
-                'status': 'OK' if loader_valid else 'FAILED'
+                'valid': loader_config_valid,
+                'status': 'OK' if loader_config_valid else 'FAILED'
             }
             
             # Check overall validity
             all_valid = all([
                 processor_valid,
                 transformer_valid,
-                loader_valid
+                loader_config_valid
             ])
             
             validation_results['pipeline_valid'] = all_valid
@@ -415,9 +422,9 @@ class AASXETLPipeline:
         
         # Add component statistics
         stats['component_stats'] = {
-            'processor': getattr(self.processor, 'stats', {}),
+            'processor': {},  # Processor created per file, no global stats
             'transformer': getattr(self.transformer, 'stats', {}),
-            'loader': getattr(self.loader, 'stats', {})
+            'loader': {}  # Loader created per file, no global stats
         }
         
         return stats
@@ -492,14 +499,17 @@ class AASXETLPipeline:
             Path to the created dataset
         """
         try:
+            # Create a loader to access the database with all processed data
+            loader = AASXLoader(self.config.load_config)
+            
             # Get database stats to check if we have data
-            db_stats = self.loader.get_database_stats()
+            db_stats = loader.get_database_stats()
             
             if db_stats.get('assets_count', 0) == 0 and db_stats.get('submodels_count', 0) == 0:
                 raise ValueError("No data available for RAG dataset creation")
             
             # Export RAG-ready data
-            rag_path = self.loader.export_for_rag(output_path)
+            rag_path = loader.export_for_rag(output_path)
             
             logger.info(f"RAG-ready dataset created at: {rag_path}")
             return rag_path

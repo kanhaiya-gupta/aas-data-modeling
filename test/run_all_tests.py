@@ -136,6 +136,7 @@ def main():
         ("unit", "Unit"),
         ("data_quality", "Data Quality"),
         ("aasx", "AASX Processing"),
+        ("kg_neo4j", "Neo4j Integration"),
         ("webapp", "Web Application"),
         ("performance", "Performance"),
         ("error_handling", "Error Handling"),

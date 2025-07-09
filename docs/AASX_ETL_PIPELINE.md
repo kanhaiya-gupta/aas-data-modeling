@@ -280,38 +280,97 @@ print(f"RAG dataset created: {rag_path}")
 
 ## Output Formats
 
-### 1. JSON Format
+The ETL pipeline generates multiple output formats, each optimized for specific use cases:
+
+### 1. JSON Format (General Purpose)
 ```json
 {
-  "metadata": {
-    "source_file": "example.aasx",
-    "processed_at": "2024-01-01T00:00:00Z",
-    "version": "1.0"
-  },
+  "format": "json",
+  "version": "1.0",
   "data": {
     "assets": [...],
     "submodels": [...],
     "documents": [...],
     "relationships": [...]
+  },
+  "quality_metrics": {
+    "total_assets": 2,
+    "total_submodels": 5,
+    "quality_score": 1.0
+  },
+  "metadata": {
+    "transformation_timestamp": "2025-07-09T12:36:45.011634",
+    "transformer_version": "1.0.0"
   }
 }
 ```
+**Use case**: Web APIs, data exchange, general processing  
+**Features**: Complete data with metadata, quality metrics, configuration info
 
-### 2. CSV Format (Flattened)
+### 2. YAML Format (Human-Readable)
+```yaml
+format: yaml
+version: "1.0"
+data:
+  assets:
+    - id: "asset_001"
+      id_short: "Motor_001"
+      description: "DC Servo Motor"
+      type: "Motor"
+      quality_level: "HIGH"
+      compliance_status: "COMPLIANT"
+```
+**Use case**: Configuration files, documentation, human review  
+**Features**: Readable format with preserved structure
+
+### 3. CSV Format (Analytics-Ready)
 ```csv
 entity_type,id,id_short,description,type,quality_level,compliance_status
-asset,asset_001,Motor_001,DC Servo Motor,Motor,high,certified
-submodel,submodel_001,TechData_001,Technical Data,TechnicalData,medium,pending
+asset,asset_001,Motor_001,DC Servo Motor,Motor,HIGH,COMPLIANT
+submodel,submodel_001,TechData_001,Technical Data,TechnicalData,MEDIUM,COMPLIANT
 ```
+**Use case**: Spreadsheet analysis, data visualization, business intelligence  
+**Features**: Flattened structure with one row per entity
 
-### 3. Graph Format (Neo4j)
-```cypher
-CREATE (a:Asset {id: 'asset_001', type: 'Motor', quality_level: 'high'})
-CREATE (s:Submodel {id: 'submodel_001', type: 'TechnicalData'})
-CREATE (a)-[:HAS_SUBMODEL]->(s)
+### 4. Graph Format (Neo4j/Graph Databases)
+```json
+{
+  "format": "graph",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "asset_001",
+      "type": "asset",
+      "properties": {
+        "id_short": "Motor_001",
+        "description": "DC Servo Motor",
+        "type": "Motor",
+        "quality_level": "HIGH",
+        "compliance_status": "COMPLIANT"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "asset_001",
+      "target": "submodel_001",
+      "type": "asset_has_submodel",
+      "properties": {
+        "extracted_at": "2025-07-09T12:36:45.020020"
+      }
+    }
+  ],
+  "metadata": {
+    "created_at": "2025-07-09T12:36:45.020020",
+    "total_nodes": 7,
+    "total_edges": 1
+  }
+}
 ```
+**Use case**: Graph databases (Neo4j, ArangoDB), relationship analysis, network visualization  
+**Features**: Nodes and edges structure optimized for graph operations
 
-### 4. Vector Database Format
+### 5. Vector Database Format
 ```python
 {
   'id': 'asset_001',
@@ -324,6 +383,8 @@ CREATE (a)-[:HAS_SUBMODEL]->(s)
   }
 }
 ```
+**Use case**: Semantic search, AI/RAG systems, similarity analysis  
+**Features**: Text embeddings for semantic search capabilities
 
 ## Performance Optimization
 
@@ -435,6 +496,180 @@ config = ETLPipelineConfig(
 )
 pipeline = AASXETLPipeline(config)
 pipeline.process_aasx_file("file.aasx")
+```
+
+## Neo4j Graph Database Integration
+
+### Importing Graph Data to Neo4j
+
+The ETL pipeline generates graph-optimized JSON files that can be directly imported into Neo4j:
+
+#### 1. Using Neo4j Cypher Scripts
+```cypher
+// Load graph data from ETL output
+LOAD JSON FROM 'file:///aasx_data_20250709_123645_graph.json' AS graph
+
+// Create nodes
+UNWIND graph.nodes AS node
+CREATE (n:Node {
+    id: node.id,
+    type: node.type,
+    id_short: node.properties.id_short,
+    description: node.properties.description,
+    quality_level: node.properties.quality_level,
+    compliance_status: node.properties.compliance_status
+})
+
+// Create relationships
+UNWIND graph.edges AS edge
+MATCH (source:Node {id: edge.source})
+MATCH (target:Node {id: edge.target})
+CREATE (source)-[r:RELATES_TO {
+    type: edge.type,
+    extracted_at: edge.properties.extracted_at
+}]->(target)
+```
+
+#### 2. Using Neo4j Import Tool
+```bash
+# Convert graph JSON to CSV for Neo4j import
+python -c "
+import json
+import csv
+
+# Load graph data
+with open('aasx_data_20250709_123645_graph.json', 'r') as f:
+    graph_data = json.load(f)
+
+# Export nodes
+with open('nodes.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['id:ID', 'type:LABEL', 'id_short', 'description', 'quality_level', 'compliance_status'])
+    for node in graph_data['nodes']:
+        writer.writerow([
+            node['id'],
+            node['type'],
+            node['properties']['id_short'],
+            node['properties']['description'],
+            node['properties']['quality_level'],
+            node['properties']['compliance_status']
+        ])
+
+# Export relationships
+with open('relationships.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow([':START_ID', ':END_ID', ':TYPE', 'extracted_at'])
+    for edge in graph_data['edges']:
+        writer.writerow([
+            edge['source'],
+            edge['target'],
+            edge['type'],
+            edge['properties']['extracted_at']
+        ])
+"
+
+# Import to Neo4j
+neo4j-admin import --database=aasx_data --nodes=nodes.csv --relationships=relationships.csv
+```
+
+#### 3. Graph Analytics Queries
+
+Once imported, you can run powerful graph analytics:
+
+```cypher
+// Find all assets with high quality levels
+MATCH (a:Node {type: 'asset', quality_level: 'HIGH'})
+RETURN a.id, a.description, a.compliance_status
+
+// Find submodels related to specific assets
+MATCH (asset:Node {type: 'asset'})-[r:RELATES_TO]->(submodel:Node {type: 'submodel'})
+WHERE asset.id CONTAINS 'motor'
+RETURN asset.description, submodel.description, r.type
+
+// Analyze compliance across the network
+MATCH (n:Node)
+RETURN n.type, n.quality_level, n.compliance_status, count(*) as count
+ORDER BY count DESC
+
+// Find connected components
+CALL gds.alpha.scc.stream('aasx_graph')
+YIELD nodeId, componentId
+RETURN componentId, count(*) as size
+ORDER BY size DESC
+```
+
+#### 4. Python Integration with Neo4j
+```python
+from neo4j import GraphDatabase
+import json
+
+class AASXGraphAnalyzer:
+    def __init__(self, uri, user, password):
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    
+    def import_graph_data(self, graph_file_path):
+        """Import graph data from ETL output"""
+        with open(graph_file_path, 'r') as f:
+            graph_data = json.load(f)
+        
+        with self.driver.session() as session:
+            # Clear existing data
+            session.run("MATCH (n) DETACH DELETE n")
+            
+            # Create nodes
+            for node in graph_data['nodes']:
+                session.run("""
+                    CREATE (n:Node {
+                        id: $id,
+                        type: $type,
+                        id_short: $id_short,
+                        description: $description,
+                        quality_level: $quality_level,
+                        compliance_status: $compliance_status
+                    })
+                """, **node['properties'], id=node['id'], type=node['type'])
+            
+            # Create relationships
+            for edge in graph_data['edges']:
+                session.run("""
+                    MATCH (source:Node {id: $source_id})
+                    MATCH (target:Node {id: $target_id})
+                    CREATE (source)-[r:RELATES_TO {
+                        type: $rel_type,
+                        extracted_at: $extracted_at
+                    }]->(target)
+                """, source_id=edge['source'], target_id=edge['target'],
+                     rel_type=edge['type'], extracted_at=edge['properties']['extracted_at'])
+    
+    def analyze_quality_distribution(self):
+        """Analyze quality distribution across assets"""
+        with self.driver.session() as session:
+            result = session.run("""
+                MATCH (n:Node {type: 'asset'})
+                RETURN n.quality_level, count(*) as count
+                ORDER BY count DESC
+            """)
+            return [record.data() for record in result]
+    
+    def find_related_submodels(self, asset_id):
+        """Find all submodels related to a specific asset"""
+        with self.driver.session() as session:
+            result = session.run("""
+                MATCH (asset:Node {id: $asset_id, type: 'asset'})-[r:RELATES_TO]->(submodel:Node {type: 'submodel'})
+                RETURN submodel.id, submodel.description, r.type
+            """, asset_id=asset_id)
+            return [record.data() for record in result]
+
+# Usage
+analyzer = AASXGraphAnalyzer("bolt://localhost:7687", "neo4j", "password")
+analyzer.import_graph_data("output/etl_results/additive-manufacturing-3d-printer_converted/aasx_data_20250709_123645_graph.json")
+
+# Run analytics
+quality_stats = analyzer.analyze_quality_distribution()
+print("Quality distribution:", quality_stats)
+
+related_submodels = analyzer.find_related_submodels("http://manufacturing.com/assets/3d_printer_am5000_001")
+print("Related submodels:", related_submodels)
 ```
 
 ## Testing

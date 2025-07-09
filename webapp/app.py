@@ -47,6 +47,7 @@ from webapp.twin_registry.routes import router as twin_registry_router
 from webapp.certificate_manager.routes import router as certificate_manager_router
 from webapp.qi_analytics.routes import router as qi_analytics_router
 from webapp.aasx.routes import router as aasx_router
+from webapp.kg_neo4j.routes import router as kg_neo4j_router
 
 # Include routers with proper prefixes
 app.include_router(ai_rag_router, prefix="/ai-rag", tags=["ai-rag"])
@@ -54,6 +55,7 @@ app.include_router(twin_registry_router, prefix="/twin-registry", tags=["twin-re
 app.include_router(certificate_manager_router, prefix="/certificates", tags=["certificates"])
 app.include_router(qi_analytics_router, prefix="/analytics", tags=["analytics"])
 app.include_router(aasx_router, prefix="/aasx", tags=["aasx"])
+app.include_router(kg_neo4j_router, tags=["kg-neo4j"])
 
 # Main dashboard route
 @app.get("/", response_class=HTMLResponse)
@@ -99,6 +101,13 @@ async def dashboard(request: Request):
                     "description": "Quality Infrastructure analytics and dashboards",
                     "url": "/analytics",
                     "icon": "📊"
+                },
+                {
+                    "id": "kg-neo4j",
+                    "name": "Knowledge Graph",
+                    "description": "Neo4j knowledge graph explorer and analytics",
+                    "url": "/kg-neo4j",
+                    "icon": "🕸️"
                 }
             ]
         }
@@ -196,6 +205,17 @@ async def analytics_page(request: Request):
         {
             "request": request,
             "title": "QI Analytics Dashboard - QI Digital Platform"
+        }
+    )
+
+@app.get("/kg-neo4j", response_class=HTMLResponse)
+async def kg_neo4j_page(request: Request):
+    """Knowledge Graph page"""
+    return templates.TemplateResponse(
+        "kg_neo4j/index.html",
+        {
+            "request": request,
+            "title": "Knowledge Graph - Neo4j - QI Digital Platform"
         }
     )
 

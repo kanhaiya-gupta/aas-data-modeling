@@ -71,6 +71,8 @@ namespace AasProcessor
                 {
                     foreach (var entry in zip.Entries)
                     {
+                        Console.WriteLine($"Found entry: {entry.Name}");
+                        
                         // Extract documents
                         if (entry.Name.EndsWith(".pdf") || entry.Name.EndsWith(".doc") || 
                             entry.Name.EndsWith(".docx") || entry.Name.EndsWith(".txt"))
@@ -81,11 +83,13 @@ namespace AasProcessor
                                 size = entry.Length,
                                 type = Path.GetExtension(entry.Name)
                             });
+                            Console.WriteLine($"Added document: {entry.Name}");
                         }
                         // Process JSON files
                         else if (entry.Name.EndsWith(".json"))
                         {
                             jsonFiles.Add(entry.Name);
+                            Console.WriteLine($"Processing JSON file: {entry.Name}");
                             try
                             {
                                 using (var stream = entry.Open())
@@ -104,24 +108,34 @@ namespace AasProcessor
                             }
                         }
                         // Process XML files (AAS data)
-                        else if (entry.Name.EndsWith(".xml") && !entry.Name.StartsWith("[Content_Types]") && entry.Name.Contains(".aas.xml"))
+                        else if (entry.Name.EndsWith(".xml") && !entry.Name.StartsWith("[Content_Types]"))
                         {
-                            xmlFiles.Add(entry.Name);
-                            try
+                            Console.WriteLine($"Found XML file: {entry.Name}");
+                            // Check if it's an AAS XML file
+                            if (entry.Name.Contains(".aas.xml") || entry.Name.Contains("/aas.xml") || entry.Name.Contains("\\aas.xml") || entry.Name.Contains("aas.xml"))
                             {
-                                using (var stream = entry.Open())
-                                using (var reader = new StreamReader(stream))
+                                xmlFiles.Add(entry.Name);
+                                Console.WriteLine($"Processing AAS XML file: {entry.Name}");
+                                try
                                 {
-                                    var content = reader.ReadToEnd();
-                                    Console.WriteLine($"Processing XML file: {entry.Name}");
-                                    
-                                    // Extract AAS data from XML
-                                    ExtractAasFromXml(content, assets, submodels, entry.Name);
+                                    using (var stream = entry.Open())
+                                    using (var reader = new StreamReader(stream))
+                                    {
+                                        var content = reader.ReadToEnd();
+                                        Console.WriteLine($"Processing XML file: {entry.Name}");
+                                        
+                                        // Extract AAS data from XML
+                                        ExtractAasFromXml(content, assets, submodels, entry.Name);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error processing XML {entry.Name}: {ex.Message}");
                                 }
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                Console.WriteLine($"Error processing XML {entry.Name}: {ex.Message}");
+                                Console.WriteLine($"Skipping non-AAS XML file: {entry.Name}");
                             }
                         }
                     }
@@ -195,74 +209,297 @@ namespace AasProcessor
                 var doc = new System.Xml.XmlDocument();
                 doc.LoadXml(xmlContent);
 
-                // Create namespace manager
-                var nsManager = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                nsManager.AddNamespace("aas", "http://www.admin-shell.io/aas/1/0");
-                nsManager.AddNamespace("xsi", "http://www.w3.org/2001/XMLSchema-instance");
+                // Detect AAS version and namespace from the XML
+                var aasVersion = DetectAasVersion(doc);
+                Console.WriteLine($"Detected AAS version: {aasVersion}");
 
-                // Extract Asset Administration Shells (AAS 1.0 format)
-                var aasNodes = doc.SelectNodes("//aas:assetAdministrationShell", nsManager);
+                // Create comprehensive namespace manager
+                var nsManager = CreateComprehensiveNamespaceManager(doc);
+
+                // Extract data based on detected version
+                switch (aasVersion)
+                {
+                    case "AAS_1_0":
+                        ExtractAas10Data(doc, nsManager, assets, submodels, sourceFile);
+                        break;
+                    case "AAS_3_0":
+                        ExtractAas30Data(doc, nsManager, assets, submodels, sourceFile);
+                        break;
+                    default:
+                        // Try all known formats
+                        ExtractAas10Data(doc, nsManager, assets, submodels, sourceFile);
+                        ExtractAas30Data(doc, nsManager, assets, submodels, sourceFile);
+                        break;
+                }
+
+                // If no data found, try generic extraction
+                if (assets.Count == 0 && submodels.Count == 0)
+                {
+                    ExtractGenericAasData(doc, assets, submodels, sourceFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing XML: {ex.Message}");
+            }
+        }
+
+        private string DetectAasVersion(System.Xml.XmlDocument doc)
+        {
+            try
+            {
+                // Check root element for AAS version indicators
+                var root = doc.DocumentElement;
+                if (root != null)
+                {
+                    var rootName = root.Name.ToLower();
+                    var rootNamespace = root.NamespaceURI;
+
+                    if (rootNamespace.Contains("aas/3/0") || rootName.Contains("aasenv3"))
+                        return "AAS_3_0";
+                    else if (rootNamespace.Contains("aas/1/0") || rootName.Contains("aasenv"))
+                        return "AAS_1_0";
+                }
+
+                // Check for version-specific elements
+                var aas3Nodes = doc.SelectNodes("//*[contains(local-name(), 'assetAdministrationShell')]");
+                var aas1Nodes = doc.SelectNodes("//*[contains(local-name(), 'assetAdministrationShell')]");
+
+                if (aas3Nodes != null && aas3Nodes.Count > 0)
+                    return "AAS_3_0";
+                else if (aas1Nodes != null && aas1Nodes.Count > 0)
+                    return "AAS_1_0";
+
+                return "UNKNOWN";
+            }
+            catch
+            {
+                return "UNKNOWN";
+            }
+        }
+
+        private System.Xml.XmlNamespaceManager CreateComprehensiveNamespaceManager(System.Xml.XmlDocument doc)
+        {
+            var nsManager = new System.Xml.XmlNamespaceManager(doc.NameTable);
+            
+            // Add all possible AAS namespaces and prefixes
+            nsManager.AddNamespace("aas", "http://www.admin-shell.io/aas/1/0");
+            nsManager.AddNamespace("aas3", "http://www.admin-shell.io/aas/3/0");
+            nsManager.AddNamespace("ns0", "http://www.admin-shell.io/aas/1/0");
+            nsManager.AddNamespace("ns1", "http://www.admin-shell.io/aas/3/0");
+            nsManager.AddNamespace("xsi", "http://www.w3.org/2001/XMLSchema-instance");
+            
+            // Add any namespaces found in the document
+            try
+            {
+                var root = doc.DocumentElement;
+                if (root != null && root.Attributes != null)
+                {
+                    foreach (System.Xml.XmlAttribute attr in root.Attributes)
+                    {
+                        if (attr.Name.StartsWith("xmlns:"))
+                        {
+                            var prefix = attr.Name.Substring(6); // Remove "xmlns:"
+                            nsManager.AddNamespace(prefix, attr.Value);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore namespace extraction errors
+            }
+
+            return nsManager;
+        }
+
+        private void ExtractAas10Data(System.Xml.XmlDocument doc, System.Xml.XmlNamespaceManager nsManager, 
+            List<object> assets, List<object> submodels, string sourceFile)
+        {
+            // Use a HashSet to track processed IDs to avoid duplicates
+            var processedAssetIds = new HashSet<string>();
+            var processedSubmodelIds = new HashSet<string>();
+            
+            // Try multiple prefixes for AAS 1.0
+            var prefixes = new[] { "aas", "ns0" };
+            
+            foreach (var prefix in prefixes)
+            {
+                // Extract Asset Administration Shells
+                var aasNodes = doc.SelectNodes($"//{prefix}:assetAdministrationShell", nsManager);
+                if (aasNodes != null)
+                {
+                    foreach (System.Xml.XmlNode aasNode in aasNodes)
+                    {
+                        var assetId = GetXmlElementTextWithPrefixes(aasNode, "identification");
+                        if (!string.IsNullOrEmpty(assetId) && !processedAssetIds.Contains(assetId))
+                        {
+                            var asset = new
+                            {
+                                id = assetId,
+                                idShort = GetXmlElementTextWithPrefixes(aasNode, "idShort"),
+                                description = GetXmlDescriptionWithPrefixes(aasNode),
+                                kind = GetXmlElementTextWithPrefixes(aasNode, "category"),
+                                source = sourceFile,
+                                format = "XML_AAS_1_0"
+                            };
+                            assets.Add(asset);
+                            processedAssetIds.Add(assetId);
+                            Console.WriteLine($"Found AAS 1.0 Asset Administration Shell: {asset.idShort} (ID: {asset.id})");
+                        }
+                    }
+                }
+
+                // Extract Assets
+                var assetNodes = doc.SelectNodes($"//{prefix}:asset", nsManager);
+                if (assetNodes != null)
+                {
+                    foreach (System.Xml.XmlNode assetNode in assetNodes)
+                    {
+                        var assetId = GetXmlElementTextWithPrefixes(assetNode, "identification");
+                        if (!string.IsNullOrEmpty(assetId) && !processedAssetIds.Contains(assetId))
+                        {
+                            var asset = new
+                            {
+                                id = assetId,
+                                idShort = GetXmlElementTextWithPrefixes(assetNode, "idShort"),
+                                description = GetXmlDescriptionWithPrefixes(assetNode),
+                                kind = GetXmlElementTextWithPrefixes(assetNode, "kind"),
+                                source = sourceFile,
+                                format = "XML_AAS_1_0"
+                            };
+                            assets.Add(asset);
+                            processedAssetIds.Add(assetId);
+                            Console.WriteLine($"Found AAS 1.0 Asset: {asset.idShort} (ID: {asset.id})");
+                        }
+                    }
+                }
+
+                // Extract Submodels
+                var submodelNodes = doc.SelectNodes($"//{prefix}:submodel", nsManager);
+                if (submodelNodes != null)
+                {
+                    foreach (System.Xml.XmlNode submodelNode in submodelNodes)
+                    {
+                        var submodelId = GetXmlElementTextWithPrefixes(submodelNode, "identification");
+                        if (!string.IsNullOrEmpty(submodelId) && !processedSubmodelIds.Contains(submodelId))
+                        {
+                            var submodelData = new
+                            {
+                                id = submodelId,
+                                idShort = GetXmlElementTextWithPrefixes(submodelNode, "idShort"),
+                                description = GetXmlDescriptionWithPrefixes(submodelNode),
+                                kind = GetXmlElementTextWithPrefixes(submodelNode, "kind"),
+                                source = sourceFile,
+                                format = "XML_AAS_1_0"
+                            };
+                            submodels.Add(submodelData);
+                            processedSubmodelIds.Add(submodelId);
+                            Console.WriteLine($"Found AAS 1.0 Submodel: {submodelData.idShort} (ID: {submodelData.id})");
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ExtractAas30Data(System.Xml.XmlDocument doc, System.Xml.XmlNamespaceManager nsManager,
+            List<object> assets, List<object> submodels, string sourceFile)
+        {
+            // Try multiple prefixes for AAS 3.0
+            var prefixes = new[] { "aas3", "ns1" };
+            
+            foreach (var prefix in prefixes)
+            {
+                // Extract Asset Administration Shells (AAS 3.0)
+                var aasNodes = doc.SelectNodes($"//{prefix}:assetAdministrationShell", nsManager);
                 if (aasNodes != null)
                 {
                     foreach (System.Xml.XmlNode aasNode in aasNodes)
                     {
                         var asset = new
                         {
-                            id = GetXmlElementText(aasNode, "aas:identification"),
-                            idShort = GetXmlElementText(aasNode, "aas:idShort"),
-                            description = GetXmlDescription(aasNode),
-                            kind = GetXmlElementText(aasNode, "aas:category"),
+                            id = GetXmlElementTextWithPrefixes(aasNode, "id"),
+                            idShort = GetXmlElementTextWithPrefixes(aasNode, "idShort"),
+                            description = GetXmlDescriptionWithPrefixes(aasNode),
+                            kind = GetXmlElementTextWithPrefixes(aasNode, "kind"),
                             source = sourceFile,
-                            format = "XML_AAS_1_0"
+                            format = "XML_AAS_3_0"
                         };
                         assets.Add(asset);
-                        Console.WriteLine($"Found Asset Administration Shell: {asset.idShort} (ID: {asset.id})");
+                        Console.WriteLine($"Found AAS 3.0 Asset Administration Shell: {asset.idShort} (ID: {asset.id})");
                     }
                 }
 
-                // Extract Assets (AAS 1.0 format)
-                var assetNodes = doc.SelectNodes("//aas:asset", nsManager);
-                if (assetNodes != null)
-                {
-                    foreach (System.Xml.XmlNode assetNode in assetNodes)
-                    {
-                        var asset = new
-                        {
-                            id = GetXmlElementText(assetNode, "aas:identification"),
-                            idShort = GetXmlElementText(assetNode, "aas:idShort"),
-                            description = GetXmlDescription(assetNode),
-                            kind = GetXmlElementText(assetNode, "aas:kind"),
-                            source = sourceFile,
-                            format = "XML_AAS_1_0"
-                        };
-                        assets.Add(asset);
-                        Console.WriteLine($"Found Asset: {asset.idShort} (ID: {asset.id})");
-                    }
-                }
-
-                // Extract Submodels (AAS 1.0 format)
-                var submodelNodes = doc.SelectNodes("//aas:submodel", nsManager);
+                // Extract Submodels (AAS 3.0)
+                var submodelNodes = doc.SelectNodes($"//{prefix}:submodel", nsManager);
                 if (submodelNodes != null)
                 {
                     foreach (System.Xml.XmlNode submodelNode in submodelNodes)
                     {
                         var submodelData = new
                         {
-                            id = GetXmlElementText(submodelNode, "aas:identification"),
-                            idShort = GetXmlElementText(submodelNode, "aas:idShort"),
-                            description = GetXmlDescription(submodelNode),
-                            kind = GetXmlElementText(submodelNode, "aas:kind"),
+                            id = GetXmlElementTextWithPrefixes(submodelNode, "id"),
+                            idShort = GetXmlElementTextWithPrefixes(submodelNode, "idShort"),
+                            description = GetXmlDescriptionWithPrefixes(submodelNode),
+                            kind = GetXmlElementTextWithPrefixes(submodelNode, "kind"),
                             source = sourceFile,
-                            format = "XML_AAS_1_0"
+                            format = "XML_AAS_3_0"
                         };
                         submodels.Add(submodelData);
-                        Console.WriteLine($"Found Submodel: {submodelData.idShort} (ID: {submodelData.id})");
+                        Console.WriteLine($"Found AAS 3.0 Submodel: {submodelData.idShort} (ID: {submodelData.id})");
+                    }
+                }
+            }
+        }
+
+        private void ExtractGenericAasData(System.Xml.XmlDocument doc, List<object> assets, List<object> submodels, string sourceFile)
+        {
+            // Generic extraction using XPath without namespace prefixes
+            try
+            {
+                // Find any element that might be an asset administration shell
+                var aasNodes = doc.SelectNodes("//*[contains(local-name(), 'assetAdministrationShell')]");
+                if (aasNodes != null)
+                {
+                    foreach (System.Xml.XmlNode aasNode in aasNodes)
+                    {
+                        var asset = new
+                        {
+                            id = GetGenericElementText(aasNode, "identification") ?? GetGenericElementText(aasNode, "id"),
+                            idShort = GetGenericElementText(aasNode, "idShort"),
+                            description = GetGenericDescription(aasNode),
+                            kind = GetGenericElementText(aasNode, "category") ?? GetGenericElementText(aasNode, "kind"),
+                            source = sourceFile,
+                            format = "XML_GENERIC"
+                        };
+                        assets.Add(asset);
+                        Console.WriteLine($"Found Generic Asset Administration Shell: {asset.idShort} (ID: {asset.id})");
+                    }
+                }
+
+                // Find any element that might be a submodel
+                var submodelNodes = doc.SelectNodes("//*[contains(local-name(), 'submodel')]");
+                if (submodelNodes != null)
+                {
+                    foreach (System.Xml.XmlNode submodelNode in submodelNodes)
+                    {
+                        var submodelData = new
+                        {
+                            id = GetGenericElementText(submodelNode, "identification") ?? GetGenericElementText(submodelNode, "id"),
+                            idShort = GetGenericElementText(submodelNode, "idShort"),
+                            description = GetGenericDescription(submodelNode),
+                            kind = GetGenericElementText(submodelNode, "kind"),
+                            source = sourceFile,
+                            format = "XML_GENERIC"
+                        };
+                        submodels.Add(submodelData);
+                        Console.WriteLine($"Found Generic Submodel: {submodelData.idShort} (ID: {submodelData.id})");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing XML: {ex.Message}");
+                Console.WriteLine($"Error in generic extraction: {ex.Message}");
             }
         }
 
@@ -371,6 +608,120 @@ namespace AasProcessor
             catch
             {
                 // Ignore errors and return empty string
+            }
+            return "";
+        }
+
+        private string GetXmlElementTextWithPrefixes(System.Xml.XmlNode node, string elementName)
+        {
+            // Try with aas: prefix first
+            var result = GetXmlElementText(node, "aas:" + elementName);
+            if (!string.IsNullOrEmpty(result))
+                return result;
+            
+            // Try with ns0: prefix
+            result = GetXmlElementText(node, "ns0:" + elementName);
+            if (!string.IsNullOrEmpty(result))
+                return result;
+            
+            // Try without prefix
+            return GetXmlElementText(node, elementName);
+        }
+
+        private string GetXmlDescriptionWithPrefixes(System.Xml.XmlNode node)
+        {
+            // Try with aas: prefix first
+            try
+            {
+                var descriptionNode = node.SelectSingleNode("aas:description", CreateNamespaceManager(node.OwnerDocument));
+                if (descriptionNode != null)
+                {
+                    var langStringNode = descriptionNode.SelectSingleNode("aas:langString[@lang='EN']", CreateNamespaceManager(node.OwnerDocument));
+                    if (langStringNode != null)
+                    {
+                        return langStringNode.InnerText ?? "";
+                    }
+                    // Fallback to any langString
+                    var anyLangString = descriptionNode.SelectSingleNode("aas:langString", CreateNamespaceManager(node.OwnerDocument));
+                    return anyLangString?.InnerText ?? "";
+                }
+            }
+            catch
+            {
+                // Ignore errors and continue
+            }
+            
+            // Try with ns0: prefix
+            try
+            {
+                var descriptionNode = node.SelectSingleNode("ns0:description", CreateNamespaceManager(node.OwnerDocument));
+                if (descriptionNode != null)
+                {
+                    var langStringNode = descriptionNode.SelectSingleNode("ns0:langString[@lang='EN']", CreateNamespaceManager(node.OwnerDocument));
+                    if (langStringNode != null)
+                    {
+                        return langStringNode.InnerText ?? "";
+                    }
+                    // Fallback to any langString
+                    var anyLangString = descriptionNode.SelectSingleNode("ns0:langString", CreateNamespaceManager(node.OwnerDocument));
+                    return anyLangString?.InnerText ?? "";
+                }
+            }
+            catch
+            {
+                // Ignore errors and continue
+            }
+            
+            return "";
+        }
+
+        private string GetGenericElementText(System.Xml.XmlNode node, string elementName)
+        {
+            try
+            {
+                // Try to find element by local name (ignoring namespace)
+                var element = node.SelectSingleNode($"*[local-name()='{elementName}']");
+                if (element != null)
+                {
+                    return element.InnerText ?? "";
+                }
+            }
+            catch
+            {
+                // Ignore errors
+            }
+            return null;
+        }
+
+        private string GetGenericDescription(System.Xml.XmlNode node)
+        {
+            try
+            {
+                // Try to find description element
+                var descriptionNode = node.SelectSingleNode("*[local-name()='description']");
+                if (descriptionNode != null)
+                {
+                    // Try to find English langString
+                    var langStringNode = descriptionNode.SelectSingleNode("*[local-name()='langString'][@lang='EN']");
+                    if (langStringNode != null)
+                    {
+                        return langStringNode.InnerText ?? "";
+                    }
+                    
+                    // Fallback to any langString
+                    var anyLangString = descriptionNode.SelectSingleNode("*[local-name()='langString']");
+                    if (anyLangString != null)
+                    {
+                        return anyLangString.InnerText ?? "";
+                    }
+                    
+                    // Fallback to direct text content
+                    return descriptionNode.InnerText ?? "";
+                }
+            }
+            catch
+            {
+                // Ignore errors
             }
             return "";
         }

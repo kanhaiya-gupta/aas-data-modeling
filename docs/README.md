@@ -13,6 +13,13 @@ Welcome to the QI Digital Platform documentation. This directory contains compre
 - **[AAS Integration Guide](AAS_INTEGRATION.md)** - Asset Administrative Shell integration and data models
 - **[FastAPI Best Practices](FASTAPI_BEST_PRACTICES.md)** - FastAPI implementation patterns and optimization
 
+### ETL & Data Processing
+
+- **[AASX ETL Pipeline](AASX_ETL_PIPELINE.md)** - Complete ETL pipeline for AASX data processing
+- **[AASX Quick Reference](AASX_ETL_QUICK_REFERENCE.md)** - Quick reference for ETL operations
+- **[Neo4j Integration](NEO4J_INTEGRATION.md)** - Graph database integration and analytics
+- **[AASX Processing Pipeline](AASX_PROCESSING_PIPELINE.md)** - Detailed processing pipeline documentation
+
 ## 🚀 Quick Navigation
 
 ### For Developers
@@ -21,6 +28,8 @@ Welcome to the QI Digital Platform documentation. This directory contains compre
 3. Use [API Documentation](API.md) for integration
 4. Follow [FastAPI Best Practices](FASTAPI_BEST_PRACTICES.md) for service development
 5. Implement [AAS Integration](AAS_INTEGRATION.md) for digital twin standards
+6. Process data with [AASX ETL Pipeline](AASX_ETL_PIPELINE.md)
+7. Analyze graphs with [Neo4j Integration](NEO4J_INTEGRATION.md)
 
 ### For DevOps/Operations
 1. Follow [Deployment Guide](DEPLOYMENT.md) for production setup
