@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center mb-3">
+                <i class="fas fa-cube text-primary me-3"></i>
+                QI Digital Platform
+            </h1>
+            <p class="lead text-center text-muted">
+                Quality Infrastructure Digital Twins & Analytics Platform
+            </p>
+        </div>
+    </div>
+
+    <!-- Platform Overview -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle text-info me-2"></i>
+                        Platform Overview
+                    </h5>
+                    <p class="card-text">
+                        The QI Digital Platform provides comprehensive digital twin management, 
+                        AI-powered analysis, certificate management, and analytics for Quality Infrastructure projects. 
+                        This platform supports additive manufacturing, hydrogen filling stations, and other critical infrastructure.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Cards -->
+    <div class="row g-4">
+        {% for module in modules %}
+        <div class="col-lg-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="display-6 me-3">{{ module.icon }}</div>
+                        <div>
+                            <h5 class="card-title mb-1">{{ module.name }}</h5>
+                            <p class="card-text text-muted small">{{ module.description }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ module.url }}" class="btn btn-primary w-100">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        Access Module
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h4 class="mb-4">
+                <i class="fas fa-chart-line text-success me-2"></i>
+                Platform Statistics
+            </h4>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-sync fa-2x mb-2"></i>
+                    <h3 class="mb-1">3</h3>
+                    <p class="mb-0">Active Digital Twins</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-certificate fa-2x mb-2"></i>
+                    <h3 class="mb-1">2</h3>
+                    <p class="mb-0">Valid Certificates</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-robot fa-2x mb-2"></i>
+                    <h3 class="mb-1">4</h3>
+                    <p class="mb-0">Analysis Types</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 bg-warning text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                    <h3 class="mb-1">3</h3>
+                    <p class="mb-0">Metric Categories</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock text-primary me-2"></i>
+                        Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-sync text-info me-2"></i>
+                                <strong>Digital Twin Sync</strong> - Additive Manufacturing Facility
+                            </div>
+                            <small class="text-muted">2 minutes ago</small>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-robot text-success me-2"></i>
+                                <strong>AI Analysis</strong> - Quality assessment completed
+                            </div>
+                            <small class="text-muted">15 minutes ago</small>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-certificate text-warning me-2"></i>
+                                <strong>Certificate</strong> - New safety certificate issued
+                            </div>
+                            <small class="text-muted">1 hour ago</small>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-chart-bar text-primary me-2"></i>
+                                <strong>Analytics</strong> - Performance metrics updated
+                            </div>
+                            <small class="text-muted">2 hours ago</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.hover-shadow:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+}
+</style>
+{% endblock %}
