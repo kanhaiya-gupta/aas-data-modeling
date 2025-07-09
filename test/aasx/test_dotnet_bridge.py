@@ -5,11 +5,8 @@ Test .NET AAS Bridge Integration
 This script tests the .NET bridge for AASX processing.
 """
 
-import sys
-import os
-
-# Add parent directory to path
-sys.path.append('..')
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
 
 def test_dotnet_bridge():
     """Test .NET bridge functionality"""
@@ -18,7 +15,7 @@ def test_dotnet_bridge():
     
     try:
         # Try to import the .NET bridge
-        from webapp.aasx.dotnet_bridge import DotNetAasBridge
+        from aasx.dotnet_bridge import DotNetAasBridge
         print("OK: .NET bridge imported successfully")
         
         # Create bridge instance

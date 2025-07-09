@@ -5,8 +5,8 @@ AASX Processing Module Test
 This script tests the AASX processing module functionality.
 """
 
-import sys
-import os
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
 
 # Add parent directory to path
 sys.path.append('..')
@@ -18,7 +18,7 @@ def test_aasx_processing():
     
     try:
         # Import the AASX processor
-        from webapp.aasx.aasx_processor import AASXProcessor
+        from aasx.aasx_processor import AASXProcessor
         
         print("OK: AASX processor imported successfully")
         

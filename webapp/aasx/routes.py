@@ -17,11 +17,15 @@ import tempfile
 import shutil
 from pathlib import Path
 
-# Import ETL pipeline components
-from .aasx_etl_pipeline import AASXETLPipeline, ETLPipelineConfig
-from .aasx_processor import AASXProcessor
-from .aasx_transformer import AASXTransformer, TransformationConfig as TransformerConfig
-from .aasx_loader import AASXLoader, LoaderConfig
+# Import ETL pipeline components from backend
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
+
+from aasx.aasx_etl_pipeline import AASXETLPipeline, ETLPipelineConfig
+from aasx.aasx_processor import AASXProcessor
+from aasx.aasx_transformer import AASXTransformer, TransformationConfig as TransformerConfig
+from aasx.aasx_loader import AASXLoader, LoaderConfig
 
 # Create router
 router = APIRouter(prefix="/aasx", tags=["aasx"])

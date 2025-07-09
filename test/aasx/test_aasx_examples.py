@@ -5,8 +5,8 @@ AASX Examples Test
 This script tests various AASX examples.
 """
 
-import sys
-import os
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
 
 # Add parent directory to path
 sys.path.append('..')
@@ -18,7 +18,7 @@ def test_aasx_examples():
     
     try:
         # Try to import the .NET bridge
-        from webapp.aasx.dotnet_bridge import DotNetAasBridge
+        from aasx.dotnet_bridge import DotNetAasBridge
         print("OK: .NET bridge imported successfully")
         
         # Create bridge instance

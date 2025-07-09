@@ -5,11 +5,8 @@ AASX Integration Test
 This script tests AASX integration with the platform.
 """
 
-import sys
-import os
-
-# Add parent directory to path
-sys.path.append('..')
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
 
 def test_aasx_integration():
     """Test AASX integration functionality"""
@@ -18,8 +15,8 @@ def test_aasx_integration():
     
     try:
         # Import required modules
-        from webapp.aasx.aasx_processor import AASXProcessor
-        from webapp.aasx.dotnet_bridge import DotNetAasBridge
+        from aasx.aasx_processor import AASXProcessor
+        from aasx.dotnet_bridge import DotNetAasBridge
         
         print("OK: All modules imported successfully")
         

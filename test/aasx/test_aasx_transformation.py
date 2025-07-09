@@ -5,13 +5,12 @@ AASX Transformation Test
 This script tests the AASX data transformation capabilities.
 """
 
-import sys
-import os
+import sys, os
 import json
 import tempfile
 
 # Add parent directory to path
-sys.path.append('..')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
 
 def test_transformation_imports():
     """Test that transformation modules can be imported"""
@@ -19,7 +18,7 @@ def test_transformation_imports():
     print("=" * 40)
     
     try:
-        from webapp.aasx.aasx_transformer import AASXTransformer, TransformationConfig
+        from aasx.aasx_transformer import AASXTransformer, TransformationConfig
         print("OK: AASXTransformer imported successfully")
         print("OK: TransformationConfig imported successfully")
         return True
@@ -34,8 +33,8 @@ def test_basic_transformation():
     print("=" * 40)
     
     try:
-        from webapp.aasx.aasx_transformer import AASXTransformer, TransformationConfig
-        from webapp.aasx.aasx_processor import AASXProcessor
+        from aasx.aasx_transformer import AASXTransformer, TransformationConfig
+        from aasx.aasx_processor import AASXProcessor
         
         # Get sample AASX data
         aasx_file = "../AasxPackageExplorer/content-for-demo/Example_AAS_ServoDCMotor_21.aasx"
@@ -92,8 +91,8 @@ def test_multiple_formats():
     print("=" * 40)
     
     try:
-        from webapp.aasx.aasx_transformer import AASXTransformer, TransformationConfig
-        from webapp.aasx.aasx_processor import AASXProcessor
+        from aasx.aasx_transformer import AASXTransformer, TransformationConfig
+        from aasx.aasx_processor import AASXProcessor
         
         # Get sample data
         aasx_file = "../AasxPackageExplorer/content-for-demo/Example_AAS_ServoDCMotor_21.aasx"
@@ -146,8 +145,8 @@ def test_quality_checks():
     print("=" * 40)
     
     try:
-        from webapp.aasx.aasx_transformer import AASXTransformer, TransformationConfig
-        from webapp.aasx.aasx_processor import AASXProcessor
+        from aasx.aasx_transformer import AASXTransformer, TransformationConfig
+        from aasx.aasx_processor import AASXProcessor
         
         # Get sample data
         aasx_file = "../AasxPackageExplorer/content-for-demo/Example_AAS_ServoDCMotor_21.aasx"
@@ -204,8 +203,8 @@ def test_data_export():
     print("=" * 40)
     
     try:
-        from webapp.aasx.aasx_transformer import AASXTransformer, TransformationConfig
-        from webapp.aasx.aasx_processor import AASXProcessor
+        from aasx.aasx_transformer import AASXTransformer, TransformationConfig
+        from aasx.aasx_processor import AASXProcessor
         
         # Get sample data
         aasx_file = "../AasxPackageExplorer/content-for-demo/Example_AAS_ServoDCMotor_21.aasx"
