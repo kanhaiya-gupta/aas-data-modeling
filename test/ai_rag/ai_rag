@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""
+Test script for YAML query configuration
+
+This script tests the YAML-based query configuration system to ensure
+it loads correctly and provides the expected functionality.
+"""
+
+import sys
+import yaml
+from pathlib import Path
+from typing import Dict, List, Any
+
+def test_yaml_loading():
+    """Test loading the YAML configuration file"""
+    print("🧪 Testing YAML Configuration Loading")
+    print("=" * 50)
+    
+    config_file = Path("config/ai_rag_queries.yaml")
+    
+    if not config_file.exists():
+        print(f"❌ Config file not found: {config_file}")
+        return False
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        print(f"✅ YAML file loaded successfully")
+        return config
+    except Exception as e:
+        print(f"❌ Error loading YAML: {e}")
+        return False
+
+def test_settings(config: Dict[str, Any]):
+    """Test settings section"""
+    print("\n🔧 Testing Settings")
+    print("-" * 30)
+    
+    settings = config.get('settings', {})
+    required_settings = ['default_analysis_type', 'default_collection', 'default_limit']
+    
+    for setting in required_settings:
+        if setting in settings:
+            print(f"✅ {setting}: {settings[setting]}")
+        else:
+            print(f"❌ Missing setting: {setting}")
+            return False
+    
+    return True
+
+def test_query_categories(config: Dict[str, Any]):
+    """Test query categories"""
+    print("\n📂 Testing Query Categories")
+    print("-" * 30)
+    
+    queries = config.get('queries', {})
+    if not queries:
+        print("❌ No query categories found")
+        return False
+    
+    total_queries = 0
+    for category, category_queries in queries.items():
+        if isinstance(category_queries, list):
+            print(f"✅ {category}: {len(category_queries)} queries")
+            total_queries += len(category_queries)
+            
+            # Test first query in category
+            if category_queries:
+                first_query = category_queries[0]
+                required_fields = ['name', 'query', 'analysis_type']
+                for field in required_fields:
+                    if field not in first_query:
+                        print(f"  ❌ Missing field '{field}' in first query")
+                        return False
+                print(f"  ✅ First query: {first_query['name']}")
+        else:
+            print(f"❌ Invalid category format: {category}")
+            return False
+    
+    print(f"✅ Total queries: {total_queries}")
+    return True
+
+def test_demo_queries(config: Dict[str, Any]):
+    """Test demo queries"""
+    print("\n🎯 Testing Demo Queries")
+    print("-" * 30)
+    
+    demo_queries = config.get('demo_queries', [])
+    if not demo_queries:
+        print("❌ No demo queries found")
+        return False
+    
+    print(f"✅ Found {len(demo_queries)} demo queries")
+    
+    for i, query in enumerate(demo_queries, 1):
+        required_fields = ['name', 'query', 'analysis_type']
+        for field in required_fields:
+            if field not in query:
+                print(f"  ❌ Demo query {i} missing field '{field}'")
+                return False
+        print(f"  ✅ Demo query {i}: {query['name']}")
+    
+    return True
+
+def test_query_templates(config: Dict[str, Any]):
+    """Test query templates"""
+    print("\n📝 Testing Query Templates")
+    print("-" * 30)
+    
+    templates = config.get('templates', {})
+    if not templates:
+        print("⚠️  No query templates found (optional)")
+        return True
+    
+    print(f"✅ Found {len(templates)} templates")
+    
+    for template_name, template in templates.items():
+        required_fields = ['query', 'analysis_type', 'parameters']
+        for field in required_fields:
+            if field not in template:
+                print(f"  ❌ Template '{template_name}' missing field '{field}'")
+                return False
+        print(f"  ✅ Template '{template_name}': {len(template['parameters'])} parameters")
+    
+    return True
+
+def test_query_retrieval(config: Dict[str, Any]):
+    """Test query retrieval functionality"""
+    print("\n🔍 Testing Query Retrieval")
+    print("-" * 30)
+    
+    # Test getting a specific query
+    queries = config.get('queries', {})
+    demo_queries = config.get('demo_queries', [])
+    
+    # Find a test query
+    test_query = None
+    for category, category_queries in queries.items():
+        if category_queries:
+            test_query = category_queries[0]
+            break
+    
+    if not test_query and demo_queries:
+        test_query = demo_queries[0]
+    
+    if not test_query:
+        print("❌ No test query found")
+        return False
+    
+    query_name = test_query['name']
+    print(f"✅ Testing query retrieval for: {query_name}")
+    
+    # Simulate query retrieval
+    found_query = None
+    for category, category_queries in queries.items():
+        for query in category_queries:
+            if query.get('name') == query_name:
+                found_query = query
+                break
+        if found_query:
+            break
+    
+    if not found_query:
+        for query in demo_queries:
+            if query.get('name') == query_name:
+                found_query = query
+                break
+    
+    if found_query:
+        print(f"✅ Query '{query_name}' found successfully")
+        print(f"  Query: {found_query['query']}")
+        print(f"  Analysis Type: {found_query['analysis_type']}")
+        return True
+    else:
+        print(f"❌ Query '{query_name}' not found")
+        return False
+
+def test_category_retrieval(config: Dict[str, Any]):
+    """Test category retrieval functionality"""
+    print("\n📂 Testing Category Retrieval")
+    print("-" * 30)
+    
+    queries = config.get('queries', {})
+    if not queries:
+        print("❌ No query categories found")
+        return False
+    
+    # Test first category
+    first_category = list(queries.keys())[0]
+    category_queries = queries[first_category]
+    
+    print(f"✅ Testing category: {first_category}")
+    print(f"  Queries in category: {len(category_queries)}")
+    
+    if category_queries:
+        print(f"  First query: {category_queries[0]['name']}")
+    
+    return True
+
+def main():
+    """Main test function"""
+    print("🚀 YAML Query Configuration Test")
+    print("=" * 60)
+    
+    # Test 1: Load YAML
+    config = test_yaml_loading()
+    if not config:
+        print("\n❌ YAML loading failed")
+        sys.exit(1)
+    
+    # Test 2: Settings
+    if not test_settings(config):
+        print("\n❌ Settings test failed")
+        sys.exit(1)
+    
+    # Test 3: Query Categories
+    if not test_query_categories(config):
+        print("\n❌ Query categories test failed")
+        sys.exit(1)
+    
+    # Test 4: Demo Queries
+    if not test_demo_queries(config):
+        print("\n❌ Demo queries test failed")
+        sys.exit(1)
+    
+    # Test 5: Query Templates
+    if not test_query_templates(config):
+        print("\n❌ Query templates test failed")
+        sys.exit(1)
+    
+    # Test 6: Query Retrieval
+    if not test_query_retrieval(config):
+        print("\n❌ Query retrieval test failed")
+        sys.exit(1)
+    
+    # Test 7: Category Retrieval
+    if not test_category_retrieval(config):
+        print("\n❌ Category retrieval test failed")
+        sys.exit(1)
+    
+    print("\n" + "=" * 60)
+    print("✅ All YAML configuration tests passed!")
+    print("=" * 60)
+    
+    # Summary
+    queries = config.get('queries', {})
+    demo_queries = config.get('demo_queries', [])
+    templates = config.get('templates', {})
+    
+    total_queries = sum(len(cat_queries) for cat_queries in queries.values())
+    
+    print(f"\n📊 Configuration Summary:")
+    print(f"  Categories: {len(queries)}")
+    print(f"  Total Queries: {total_queries}")
+    print(f"  Demo Queries: {len(demo_queries)}")
+    print(f"  Templates: {len(templates)}")
+    
+    print(f"\n📋 Available Categories:")
+    for category in queries.keys():
+        print(f"  • {category}")
+    
+    print(f"\n🎯 Demo Queries:")
+    for query in demo_queries:
+        print(f"  • {query['name']}")
+
+if __name__ == "__main__":
+    main() 
