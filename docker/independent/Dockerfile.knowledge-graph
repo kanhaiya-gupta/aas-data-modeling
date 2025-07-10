@@ -1,0 +1,56 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code and scripts
+COPY backend/ ./backend/
+COPY webapp/ ./webapp/
+COPY scripts/ ./scripts/
+COPY config_enhanced_rag.yaml .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/output /app/logs /app/data/processed /app/data/raw /app/data/graph_data && \
+    chmod -R 755 /app/output /app/logs /app/data
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV DATA_SOURCE=neo4j
+ENV GRAPH_DATA_DIR=/app/data/graph_data
+ENV PROCESSED_DATA_DIR=/app/data/processed
+
+# Create non-root user for security
+RUN useradd -m -u 1000 kguser && \
+    chown -R kguser:kguser /app && \
+    chmod -R 755 /app
+
+USER kguser
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+echo "Waiting for Neo4j to be ready..."\n\
+python scripts/wait_for_neo4j.py\n\
+if [ $? -eq 0 ]; then\n\
+    echo "Neo4j is ready, running analysis..."\n\
+    python scripts/integrate_neo4j.py --analyze\n\
+else\n\
+    echo "Failed to connect to Neo4j"\n\
+    exit 1\n\
+fi' > /app/startup.sh && chmod +x /app/startup.sh
+
+# Default command - run startup script
+CMD ["/app/startup.sh"] 
