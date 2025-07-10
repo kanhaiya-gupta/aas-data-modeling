@@ -401,7 +401,7 @@ class AIService:
         self.openai_client = AsyncOpenAI()
         self.anthropic_client = AsyncAnthropic()
         self.model_config = {
-            "openai": "gpt-4-turbo-preview",
+            "openai": "gpt-4.1-mini-2025-04-14",
             "anthropic": "claude-3-sonnet-20240229"
         }
     

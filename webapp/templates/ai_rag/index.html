@@ -1,102 +1,185 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}AI/RAG System - QI Digital Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .query-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .response-section {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-left: 5px solid #007bff;
+    }
+    
+    .demo-queries {
+        background: #e3f2fd;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .demo-query-btn {
+        margin: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .demo-query-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .collection-badge {
+        background: #28a745;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        margin: 0.25rem;
+        display: inline-block;
+    }
+    
+    .analysis-type-selector {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .query-input {
+        border-radius: 25px;
+        border: 2px solid #e9ecef;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .query-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+    
+    .submit-btn {
+        border-radius: 25px;
+        padding: 1rem 2rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .response-content {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border-left: 4px solid #28a745;
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 5px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 5px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header -->
+    <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-0">
-                        <i class="fas fa-robot text-primary"></i>
-                        AI/RAG System
-                    </h1>
-                    <p class="text-muted mb-0">AI-powered analysis and insights for digital twins</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <button id="refreshAnalysis" class="btn btn-primary">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh Analysis
-                    </button>
-                    <button id="newQuery" class="btn btn-outline-secondary">
-                        <i class="fas fa-plus"></i>
-                        New Query
-                    </button>
-                </div>
-            </div>
+            <h1 class="display-4 text-center mb-3">
+                <i class="fas fa-robot text-primary me-3"></i>
+                AI/RAG System
+            </h1>
+            <p class="lead text-center text-muted">
+                AI-powered analysis and insights for digital twins using Retrieval-Augmented Generation
+            </p>
         </div>
     </div>
 
-    <!-- Status Cards -->
+    <!-- System Status -->
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card border-left-primary shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                AI Models
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">3</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-brain fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>
+                        System Status
+                    </h5>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-left-success shadow h-100">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Active Queries
+                    <div class="row" id="system-status">
+                        <div class="col-md-3 text-center">
+                            <div class="stats-card">
+                                <i class="fas fa-database fa-2x text-primary mb-2"></i>
+                                <h6>Vector Database</h6>
+                                <span id="status-qdrant" class="badge bg-secondary">Checking...</span>
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">12</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-search fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-left-info shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Knowledge Base
+                        <div class="col-md-3 text-center">
+                            <div class="stats-card">
+                                <i class="fas fa-project-diagram fa-2x text-info mb-2"></i>
+                                <h6>Knowledge Graph</h6>
+                                <span id="status-neo4j" class="badge bg-secondary">Checking...</span>
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">1.2K</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-database fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-left-warning shadow h-100">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Response Time
+                        <div class="col-md-3 text-center">
+                            <div class="stats-card">
+                                <i class="fas fa-brain fa-2x text-success mb-2"></i>
+                                <h6>AI Model</h6>
+                                <span id="status-openai" class="badge bg-secondary">Checking...</span>
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">2.3s</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        <div class="col-md-3 text-center">
+                            <div class="stats-card">
+                                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                                <h6>ETL Pipeline</h6>
+                                <span id="status-etl" class="badge bg-secondary">Checking...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -104,126 +187,135 @@
         </div>
     </div>
 
-    <!-- Main Content -->
+    <!-- Query Section -->
     <div class="row">
-        <!-- Query Interface -->
         <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-comments"></i>
-                        AI Query Interface
-                    </h6>
+            <div class="query-section">
+                <h3 class="mb-4">
+                    <i class="fas fa-search me-2"></i>
+                    Ask Questions About Your Digital Twins
+                </h3>
+                
+                <!-- Analysis Type Selector -->
+                <div class="analysis-type-selector mb-3">
+                    <label class="form-label fw-bold">Analysis Type:</label>
+                    <div class="btn-group" role="group" id="analysis-type-group">
+                        <input type="radio" class="btn-check" name="analysis-type" id="general" value="general" checked>
+                        <label class="btn btn-outline-primary" for="general">General</label>
+                        
+                        <input type="radio" class="btn-check" name="analysis-type" id="quality" value="quality">
+                        <label class="btn btn-outline-primary" for="quality">Quality</label>
+                        
+                        <input type="radio" class="btn-check" name="analysis-type" id="risk" value="risk">
+                        <label class="btn btn-outline-primary" for="risk">Risk</label>
+                        
+                        <input type="radio" class="btn-check" name="analysis-type" id="optimization" value="optimization">
+                        <label class="btn btn-outline-primary" for="optimization">Optimization</label>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="queryInput" class="form-label">Ask about your digital twins:</label>
-                        <textarea class="form-control" id="queryInput" rows="3" placeholder="e.g., What are the quality metrics for the additive manufacturing facility?"></textarea>
+
+                <!-- Query Input -->
+                <div class="mb-3">
+                    <label for="query-input" class="form-label fw-bold">Your Question:</label>
+                    <textarea 
+                        class="form-control query-input" 
+                        id="query-input" 
+                        rows="3" 
+                        placeholder="Ask about asset quality, risk assessment, optimization opportunities, or general insights..."
+                    ></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center">
+                    <button type="button" class="btn btn-light btn-lg submit-btn" id="submit-query">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Get AI Analysis
+                    </button>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div class="loading-spinner text-center mt-3" id="query-loading">
+                    <div class="spinner-border text-light" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-primary" id="submitQuery">
-                            <i class="fas fa-paper-plane"></i>
-                            Submit Query
-                        </button>
-                        <button class="btn btn-outline-secondary" id="clearQuery">
-                            <i class="fas fa-eraser"></i>
-                            Clear
-                        </button>
-                    </div>
+                    <p class="mt-2">Analyzing your question...</p>
                 </div>
             </div>
 
-            <!-- Query Results -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-lightbulb"></i>
-                        Analysis Results
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div id="queryResults">
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-robot fa-3x mb-3"></i>
-                            <p>Submit a query to get AI-powered insights about your digital twins.</p>
-                        </div>
-                    </div>
-                </div>
+            <!-- Response Section -->
+            <div class="response-section" id="response-section" style="display: none;">
+                <h4 class="mb-3">
+                    <i class="fas fa-lightbulb me-2 text-warning"></i>
+                    AI Analysis Results
+                </h4>
+                <div id="response-content"></div>
             </div>
         </div>
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-            <!-- Recent Queries -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-history"></i>
-                        Recent Queries
-                    </h6>
+            <!-- Demo Queries -->
+            <div class="demo-queries">
+                <h5 class="mb-3">
+                    <i class="fas fa-play-circle me-2"></i>
+                    Try Demo Queries
+                </h5>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary demo-query-btn" data-query="What are the quality issues in our manufacturing assets?">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Quality Issues
+                    </button>
+                    <button class="btn btn-outline-primary demo-query-btn" data-query="Assess the risk level of our critical equipment">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Risk Assessment
+                    </button>
+                    <button class="btn btn-outline-primary demo-query-btn" data-query="How can we optimize our production efficiency?">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Optimization
+                    </button>
+                    <button class="btn btn-outline-primary demo-query-btn" data-query="What are the main assets in our digital twin system?">
+                        <i class="fas fa-cube me-2"></i>
+                        Asset Overview
+                    </button>
+                    <button class="btn btn-outline-success demo-query-btn" id="run-all-demos">
+                        <i class="fas fa-rocket me-2"></i>
+                        Run All Demos
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Quality Assessment</strong>
-                                <br><small class="text-muted">Additive Manufacturing Facility</small>
-                            </div>
-                            <small class="text-muted">2 min ago</small>
+            </div>
+
+            <!-- System Stats -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        System Statistics
+                    </h5>
+                </div>
+                <div class="card-body" id="system-stats">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Performance Analysis</strong>
-                                <br><small class="text-muted">Hydrogen Filling Station</small>
-                            </div>
-                            <small class="text-muted">15 min ago</small>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Maintenance Schedule</strong>
-                                <br><small class="text-muted">Servo DC Motor</small>
-                            </div>
-                            <small class="text-muted">1 hour ago</small>
-                        </div>
+                        <p class="mt-2">Loading statistics...</p>
                     </div>
                 </div>
             </div>
 
-            <!-- AI Models Status -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-cogs"></i>
-                        AI Models Status
-                    </h6>
+            <!-- Collections Info -->
+            <div class="card mt-3">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        Available Collections
+                    </h5>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>Quality Analysis Model</span>
-                            <span class="badge bg-success">Active</span>
+                <div class="card-body" id="collections-info">
+                    <div class="text-center">
+                        <div class="spinner-border text-secondary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="progress mt-1" style="height: 5px;">
-                            <div class="progress-bar bg-success" style="width: 95%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>Performance Prediction</span>
-                            <span class="badge bg-success">Active</span>
-                        </div>
-                        <div class="progress mt-1" style="height: 5px;">
-                            <div class="progress-bar bg-success" style="width: 88%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>Anomaly Detection</span>
-                            <span class="badge bg-warning">Training</span>
-                        </div>
-                        <div class="progress mt-1" style="height: 5px;">
-                            <div class="progress-bar bg-warning" style="width: 65%"></div>
-                        </div>
+                        <p class="mt-2">Loading collections...</p>
                     </div>
                 </div>
             </div>
@@ -232,114 +324,333 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-$(document).ready(function() {
-    // Submit query
-    $('#submitQuery').click(function() {
-        var query = $('#queryInput').val().trim();
+// AI/RAG System JavaScript
+class AIRAGSystem {
+    constructor() {
+        this.apiClient = window.apiClient;
+        this.uiHelper = window.uiHelper;
+        this.init();
+    }
+
+    init() {
+        this.bindEvents();
+        this.loadSystemStatus();
+        this.loadSystemStats();
+        this.loadCollections();
+    }
+
+    bindEvents() {
+        // Query submission
+        document.getElementById('submit-query').addEventListener('click', () => {
+            this.submitQuery();
+        });
+
+        // Enter key in query input
+        document.getElementById('query-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.submitQuery();
+            }
+        });
+
+        // Demo query buttons
+        document.querySelectorAll('.demo-query-btn').forEach(btn => {
+            if (btn.id !== 'run-all-demos') {
+                btn.addEventListener('click', () => {
+                    const query = btn.getAttribute('data-query');
+                    document.getElementById('query-input').value = query;
+                    this.submitQuery();
+                });
+            }
+        });
+
+        // Run all demos
+        document.getElementById('run-all-demos').addEventListener('click', () => {
+            this.runAllDemos();
+        });
+    }
+
+    async submitQuery() {
+        const query = document.getElementById('query-input').value.trim();
         if (!query) {
-            alert('Please enter a query');
+            this.uiHelper.showWarning('Please enter a question to analyze.');
             return;
         }
+
+        const analysisType = document.querySelector('input[name="analysis-type"]:checked').value;
         
         // Show loading
-        $('#queryResults').html(`
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Analyzing your query...</p>
-            </div>
-        `);
-        
-        // Simulate AI response
-        setTimeout(function() {
-            var response = generateAIResponse(query);
-            $('#queryResults').html(response);
-        }, 2000);
-    });
-    
-    // Clear query
-    $('#clearQuery').click(function() {
-        $('#queryInput').val('');
-        $('#queryResults').html(`
-            <div class="text-center text-muted py-4">
-                <i class="fas fa-robot fa-3x mb-3"></i>
-                <p>Submit a query to get AI-powered insights about your digital twins.</p>
-            </div>
-        `);
-    });
-    
-    // Refresh analysis
-    $('#refreshAnalysis').click(function() {
-        location.reload();
-    });
-    
-    // New query
-    $('#newQuery').click(function() {
-        $('#queryInput').focus();
-    });
-});
+        this.showQueryLoading(true);
+        this.hideResponse();
 
-function generateAIResponse(query) {
-    var responses = {
-        'quality': `
-            <div class="alert alert-info">
-                <h6><i class="fas fa-chart-line"></i> Quality Analysis Results</h6>
-                <p>Based on the digital twin data analysis:</p>
-                <ul>
-                    <li><strong>Overall Quality Score:</strong> 94.2%</li>
-                    <li><strong>Dimensional Accuracy:</strong> ±0.02mm</li>
-                    <li><strong>Surface Finish:</strong> Ra 3.2μm</li>
-                    <li><strong>Material Properties:</strong> Within specifications</li>
-                </ul>
-                <p class="mb-0"><strong>Recommendation:</strong> Continue current manufacturing parameters for optimal quality.</p>
+        try {
+            const response = await this.apiClient.queryAIRAG(query, analysisType);
+            this.displayResponse(response);
+            this.uiHelper.showSuccess('Analysis completed successfully!');
+        } catch (error) {
+            console.error('Query failed:', error);
+            this.uiHelper.showError('Failed to get AI analysis. Please try again.');
+            this.hideResponse();
+        } finally {
+            this.showQueryLoading(false);
+        }
+    }
+
+    async runAllDemos() {
+        const demoQueries = [
+            "What are the quality issues in our manufacturing assets?",
+            "Assess the risk level of our critical equipment",
+            "How can we optimize our production efficiency?",
+            "What are the main assets in our digital twin system?"
+        ];
+
+        this.uiHelper.showInfo('Running all demo queries...');
+        
+        const results = [];
+        for (const query of demoQueries) {
+            try {
+                const response = await this.apiClient.queryAIRAG(query, 'general');
+                results.push({ query, response });
+            } catch (error) {
+                console.error(`Demo query failed for: ${query}`, error);
+                results.push({ query, error: error.message });
+            }
+        }
+
+        this.displayDemoResults(results);
+    }
+
+    displayResponse(response) {
+        const responseSection = document.getElementById('response-section');
+        const responseContent = document.getElementById('response-content');
+
+        let html = `
+            <div class="response-content">
+                <h5 class="text-primary mb-3">
+                    <i class="fas fa-robot me-2"></i>
+                    AI Response
+                </h5>
+                <div class="mb-3">
+                    <strong>Analysis:</strong>
+                    <p class="mt-2">${response.analysis || response.response || 'No analysis available'}</p>
+                </div>
+        `;
+
+        if (response.context && response.context.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <strong>Relevant Context:</strong>
+                    <ul class="mt-2">
+                        ${response.context.map(item => `<li>${item}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (response.sources && response.sources.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <strong>Sources:</strong>
+                    <ul class="mt-2">
+                        ${response.sources.map(source => `<li>${source}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (response.confidence) {
+            html += `
+                <div class="mb-3">
+                    <strong>Confidence:</strong>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: ${response.confidence}%">
+                            ${response.confidence}%
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        responseContent.innerHTML = html;
+        responseSection.style.display = 'block';
+    }
+
+    displayDemoResults(results) {
+        const responseSection = document.getElementById('response-section');
+        const responseContent = document.getElementById('response-content');
+
+        let html = `
+            <div class="response-content">
+                <h5 class="text-primary mb-3">
+                    <i class="fas fa-rocket me-2"></i>
+                    Demo Results
+                </h5>
+        `;
+
+        results.forEach((result, index) => {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>Query ${index + 1}:</strong> ${result.query}
+                    </div>
+                    <div class="card-body">
+                        ${result.error ? 
+                            `<div class="text-danger">Error: ${result.error}</div>` :
+                            `<p>${result.response.analysis || result.response.response || 'No response'}</p>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        responseContent.innerHTML = html;
+        responseSection.style.display = 'block';
+    }
+
+    async loadSystemStatus() {
+        try {
+            const status = await this.apiClient.checkAllServices();
+            
+            // Update status indicators
+            this.updateStatusIndicator('qdrant', status.ai_rag?.status || 'error');
+            this.updateStatusIndicator('neo4j', status.kg?.status || 'error');
+            this.updateStatusIndicator('openai', status.ai_rag?.openai_status || 'error');
+            this.updateStatusIndicator('etl', status.etl?.status || 'error');
+            
+        } catch (error) {
+            console.error('Failed to load system status:', error);
+            this.updateStatusIndicator('qdrant', 'error');
+            this.updateStatusIndicator('neo4j', 'error');
+            this.updateStatusIndicator('openai', 'error');
+            this.updateStatusIndicator('etl', 'error');
+        }
+    }
+
+    async loadSystemStats() {
+        try {
+            const stats = await this.apiClient.getAIRAGStats();
+            this.displaySystemStats(stats);
+        } catch (error) {
+            console.error('Failed to load system stats:', error);
+            document.getElementById('system-stats').innerHTML = 
+                '<div class="text-danger">Failed to load statistics</div>';
+        }
+    }
+
+    async loadCollections() {
+        try {
+            const collections = await this.apiClient.getCollections();
+            this.displayCollections(collections);
+        } catch (error) {
+            console.error('Failed to load collections:', error);
+            document.getElementById('collections-info').innerHTML = 
+                '<div class="text-danger">Failed to load collections</div>';
+        }
+    }
+
+    updateStatusIndicator(service, status) {
+        const indicator = document.getElementById(`status-${service}`);
+        if (indicator) {
+            const isHealthy = status === 'healthy' || status === 'connected';
+            indicator.className = `badge ${isHealthy ? 'bg-success' : 'bg-danger'}`;
+            indicator.textContent = isHealthy ? 'Connected' : 'Error';
+        }
+    }
+
+    displaySystemStats(stats) {
+        const container = document.getElementById('system-stats');
+        
+        let html = `
+            <div class="row text-center">
+                <div class="col-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="text-primary">Collections</h6>
+                        <h4>${stats.collections_count || 0}</h4>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="text-success">Total Points</h6>
+                        <h4>${stats.total_points || 0}</h4>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="text-info">Assets</h6>
+                        <h4>${stats.assets_count || 0}</h4>
+                    </div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="text-warning">Submodels</h6>
+                        <h4>${stats.submodels_count || 0}</h4>
+                    </div>
+                </div>
             </div>
-        `,
-        'performance': `
-            <div class="alert alert-success">
-                <h6><i class="fas fa-tachometer-alt"></i> Performance Analysis</h6>
-                <p>Performance metrics analysis:</p>
-                <ul>
-                    <li><strong>Efficiency:</strong> 87.3%</li>
-                    <li><strong>Throughput:</strong> 45 parts/hour</li>
-                    <li><strong>Energy Consumption:</strong> 2.1 kWh/part</li>
-                    <li><strong>Uptime:</strong> 96.8%</li>
-                </ul>
-                <p class="mb-0"><strong>Insight:</strong> Performance is above industry average with room for optimization.</p>
-            </div>
-        `,
-        'maintenance': `
-            <div class="alert alert-warning">
-                <h6><i class="fas fa-tools"></i> Maintenance Analysis</h6>
-                <p>Maintenance schedule recommendations:</p>
-                <ul>
-                    <li><strong>Next Maintenance:</strong> 15 days</li>
-                    <li><strong>Critical Components:</strong> Motor bearings, drive belts</li>
-                    <li><strong>Estimated Duration:</strong> 4 hours</li>
-                    <li><strong>Required Parts:</strong> Bearing set, belt kit</li>
-                </ul>
-                <p class="mb-0"><strong>Action:</strong> Schedule preventive maintenance to avoid downtime.</p>
-            </div>
-        `
-    };
-    
-    query = query.toLowerCase();
-    if (query.includes('quality')) return responses.quality;
-    if (query.includes('performance')) return responses.performance;
-    if (query.includes('maintenance')) return responses.maintenance;
-    
-    return `
-        <div class="alert alert-primary">
-            <h6><i class="fas fa-lightbulb"></i> AI Analysis</h6>
-            <p>Based on your query: "${query}"</p>
-            <p>The AI system has analyzed the digital twin data and found relevant insights. 
-            The system is processing multiple data sources including sensor readings, 
-            historical performance data, and quality metrics.</p>
-            <p class="mb-0"><strong>Next Steps:</strong> Consider reviewing the detailed analytics dashboard for more specific insights.</p>
-        </div>
-    `;
+        `;
+
+        if (stats.last_indexed) {
+            html += `
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        Last indexed: ${new Date(stats.last_indexed).toLocaleString()}
+                    </small>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    displayCollections(collections) {
+        const container = document.getElementById('collections-info');
+        
+        if (!collections || collections.length === 0) {
+            container.innerHTML = '<div class="text-muted">No collections available</div>';
+            return;
+        }
+
+        let html = '';
+        collections.forEach(collection => {
+            html += `
+                <div class="collection-badge">
+                    <i class="fas fa-database me-1"></i>
+                    ${collection.name}
+                    <span class="badge bg-light text-dark ms-1">${collection.points_count || 0}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    showQueryLoading(show) {
+        const loading = document.getElementById('query-loading');
+        const submitBtn = document.getElementById('submit-query');
+        
+        if (show) {
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+        } else {
+            loading.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    }
+
+    hideResponse() {
+        document.getElementById('response-section').style.display = 'none';
+    }
 }
+
+// Initialize the AI/RAG system when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new AIRAGSystem();
+});
 </script>
 {% endblock %} 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Dashboard - AASX Digital Twin Analytics Framework{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -9,28 +9,41 @@
         <div class="col-12">
             <h1 class="display-4 text-center mb-3">
                 <i class="fas fa-cube text-primary me-3"></i>
-                QI Digital Platform
+                AASX Digital Twin Analytics Framework
             </h1>
             <p class="lead text-center text-muted">
-                Quality Infrastructure Digital Twins & Analytics Platform
+                Comprehensive framework for processing AASX files and building digital twin analytics
             </p>
         </div>
     </div>
 
-    <!-- Platform Overview -->
+    <!-- Framework Overview -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <h5 class="card-title">
                         <i class="fas fa-info-circle text-info me-2"></i>
-                        Platform Overview
+                        Framework Overview
                     </h5>
                     <p class="card-text">
-                        The QI Digital Platform provides comprehensive digital twin management, 
-                        AI-powered analysis, certificate management, and analytics for Quality Infrastructure projects. 
-                        This platform supports additive manufacturing, hydrogen filling stations, and other critical infrastructure.
+                        The AASX Digital Twin Analytics Framework provides comprehensive ETL processing, 
+                        knowledge graph construction, AI-powered analysis, and digital twin management for AASX files.
+                        The framework follows a logical processing flow: AASX ETL Pipeline → Knowledge Graph → AI/RAG Analysis → 
+                        Digital Twin Registry → Certificate Management → Analytics Dashboard.
+                        This framework supports additive manufacturing, hydrogen filling stations, and other critical infrastructure
+                        by transforming AASX data into actionable insights through advanced analytics.
                     </p>
+                    <div class="mt-3">
+                        <a href="/flowchart" class="btn btn-outline-primary">
+                            <i class="fas fa-project-diagram me-2"></i>
+                            View Processing Flowchart
+                        </a>
+                        <small class="text-muted ms-3">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Visual representation of the complete framework architecture
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -39,7 +52,7 @@
     <!-- Module Cards -->
     <div class="row g-4">
         {% for module in modules %}
-        <div class="col-lg-6 col-xl-3">
+        <div class="col-lg-6 col-xl-4">
             <div class="card h-100 border-0 shadow-sm hover-shadow">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
@@ -64,32 +77,32 @@
         <div class="col-12">
             <h4 class="mb-4">
                 <i class="fas fa-chart-line text-success me-2"></i>
-                Platform Statistics
+                Framework Statistics
             </h4>
         </div>
     </div>
-    
+
     <div class="row g-4">
         <div class="col-md-3">
             <div class="card border-0 bg-primary text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-sync fa-2x mb-2"></i>
-                    <h3 class="mb-1">3</h3>
-                    <p class="mb-0">Active Digital Twins</p>
+                    <i class="fas fa-file-archive fa-2x mb-2"></i>
+                    <h3 class="mb-1">5</h3>
+                    <p class="mb-0">AASX Files Processed</p>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3">
             <div class="card border-0 bg-success text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-certificate fa-2x mb-2"></i>
-                    <h3 class="mb-1">2</h3>
-                    <p class="mb-0">Valid Certificates</p>
+                    <i class="fas fa-project-diagram fa-2x mb-2"></i>
+                    <h3 class="mb-1">6</h3>
+                    <p class="mb-0">Analytics Modules</p>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3">
             <div class="card border-0 bg-info text-white">
                 <div class="card-body text-center">
@@ -99,13 +112,13 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3">
             <div class="card border-0 bg-warning text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                    <i class="fas fa-database fa-2x mb-2"></i>
                     <h3 class="mb-1">3</h3>
-                    <p class="mb-0">Metric Categories</p>
+                    <p class="mb-0">Data Sources</p>
                 </div>
             </div>
         </div>
@@ -115,7 +128,7 @@
     <div class="row mt-5">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light">
+                <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-clock text-primary me-2"></i>
                         Recent Activity
@@ -125,8 +138,8 @@
                     <div class="list-group list-group-flush">
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <i class="fas fa-sync text-info me-2"></i>
-                                <strong>Digital Twin Sync</strong> - Additive Manufacturing Facility
+                                <i class="fas fa-cogs text-info me-2"></i>
+                                <strong>AASX ETL Processing</strong> - Additive Manufacturing Facility
                             </div>
                             <small class="text-muted">2 minutes ago</small>
                         </div>
@@ -139,8 +152,8 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <i class="fas fa-certificate text-warning me-2"></i>
-                                <strong>Certificate</strong> - New safety certificate issued
+                                <i class="fas fa-project-diagram text-warning me-2"></i>
+                                <strong>Knowledge Graph</strong> - Graph relationships updated
                             </div>
                             <small class="text-muted">1 hour ago</small>
                         </div>
@@ -157,13 +170,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-.hover-shadow:hover {
-    transform: translateY(-2px);
-    transition: transform 0.2s ease-in-out;
-}
-</style>
 {% endblock %}

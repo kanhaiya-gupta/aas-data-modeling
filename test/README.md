@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains the comprehensive test suite for the QI Digital Platform. The tests are organized by type and functionality to ensure proper coverage and maintainability.
+This directory contains the comprehensive test suite for the AASX Digital Twin Analytics Framework. The tests are organized by type and functionality to ensure proper coverage and maintainability.
 
 ## Directory Structure
 
@@ -26,8 +26,14 @@ test/
 │   └── test_aasx_performance.py
 ├── error_handling/              # Error handling tests
 │   └── test_error_scenarios.py
-└── integration/                 # Integration tests
-    └── test_hybrid_processing.py
+├── integration/                 # Integration tests
+│   └── test_hybrid_processing.py
+└── kg_neo4j/                    # Knowledge Graph tests
+    ├── test_neo4j_integration.py
+    ├── test_neo4j_connection.py
+    ├── test_password_validation.py
+    ├── test_data_import.py
+    └── run_all_neo4j_tests.py
 ```
 
 ## Test Categories
@@ -147,6 +153,37 @@ cd test/integration
 python test_hybrid_processing.py
 ```
 
+### Knowledge Graph Tests (`kg_neo4j/`)
+Tests for Neo4j integration and knowledge graph functionality.
+
+**Files:**
+- `test_neo4j_integration.py` - Comprehensive Neo4j integration testing
+- `test_neo4j_connection.py` - Connection testing with detailed error reporting
+- `test_password_validation.py` - Password testing utility
+- `test_data_import.py` - Data import functionality testing
+- `run_all_neo4j_tests.py` - Runs all Neo4j tests in sequence
+
+**Features Tested:**
+- ✅ Environment Variables Test - Load `.env` file, read Neo4j configuration
+- ✅ Module Imports Test - Import Neo4jManager, AASXGraphAnalyzer, CypherQueries
+- ✅ Connection Test - Neo4j database connection, authentication validation
+- ✅ Graph Validation Test - Valid graph data structure, invalid data rejection
+- ✅ Cypher Queries Test - Static query generation, dynamic query building
+- ✅ ETL Integration Test - ETL output directory detection, graph file discovery
+- ✅ Data Import Test - Graph data validation, import execution
+
+**Run Knowledge Graph Tests:**
+```bash
+# Run all Neo4j tests
+python test/kg_neo4j/run_all_neo4j_tests.py
+
+# Run individual tests
+python test/kg_neo4j/test_neo4j_connection.py
+python test/kg_neo4j/test_password_validation.py
+python test/kg_neo4j/test_data_import.py
+python test/kg_neo4j/test_neo4j_integration.py
+```
+
 ## Running Tests
 
 ### Run All Tests
@@ -184,6 +221,9 @@ python test_error_scenarios.py
 # Integration tests only
 cd test/integration
 python test_hybrid_processing.py
+
+# Knowledge Graph tests only
+python test/kg_neo4j/run_all_neo4j_tests.py
 ```
 
 ### Run Individual Tests
@@ -199,187 +239,158 @@ python test/error_handling/test_error_scenarios.py
 
 # Test web application
 python test/webapp/test_webapp_routes.py
+
+# Test Neo4j integration
+python test/kg_neo4j/test_neo4j_integration.py
 ```
 
-## Test Dependencies
+## Test Prerequisites
 
-### Required Software
-- **Python 3.9+** with required packages
-- **.NET 6.0 SDK** for AASX processing
-- **AasCore.Aas3.Package** NuGet package
+### Environment Setup
+1. **Python Environment**: Python 3.8+ with required packages
+2. **.NET 6.0**: For AAS processor tests
+3. **Neo4j Database**: For knowledge graph tests
+4. **Qdrant**: For vector database tests
+5. **Environment Variables**: Properly configured `.env` file
 
-### Python Dependencies
+### Required Dependencies
 ```bash
+# Install test dependencies
 pip install -r requirements.txt
+
+# Install additional test packages
+pip install pytest pytest-cov pytest-mock
 ```
 
-### Optional Dependencies
+### Database Setup
 ```bash
-# For performance tests
-pip install psutil
+# Start Neo4j (for knowledge graph tests)
+docker run -d --name neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/your_password \
+  neo4j:latest
 
-# For advanced AAS processing
-pip install aas-core3 aasx-package
+# Start Qdrant (for vector database tests)
+docker run -d --name qdrant \
+  -p 6333:6333 \
+  qdrant/qdrant:latest
 ```
-
-### .NET Dependencies
-```bash
-cd aas-processor
-dotnet restore
-dotnet build --configuration Release
-```
-
-## Test Data
-
-### AASX Files
-- **Example_AAS_ServoDCMotor_21.aasx** - Working AASX example
-- **data/aasx-examples/** - Additional AASX examples (XML format)
-
-### Expected Results
-- **Assets:** 2 (Asset Administration Shell + Physical Asset)
-- **Submodels:** 4 (Identification, TechnicalData, Documentation, OperationalData)
-- **Documents:** 1 (OperatingManual.pdf)
-- **Processing Method:** Enhanced ZIP processing
 
 ## Test Results
 
-### Successful Test Output
+### Expected Output
 ```
-✅ .NET bridge imported successfully
-✅ .NET processor is available
-📁 Testing with: Example_AAS_ServoDCMotor_21.aasx
-✅ .NET processing successful!
-   Processing method: enhanced_zip_processing
-   Assets found: 2
-   Submodels found: 4
-   Documents found: 1
-```
-
-### Data Quality Test Output
-```
-OK: All required top-level fields present
-OK: All 2 assets have required fields
-OK: All 4 submodels have required fields
-OK: No duplicate IDs found
-OK: Data types are consistent
-```
-
-### Performance Test Output
-```
-OK: Processing completed in 1.234 seconds
-OK: Memory used: 45.67 MB
-OK: Processed 3 files in 2.456 seconds
-OK: Processing speed: 0.85 MB/s
-```
-
-## Adding New Tests
-
-### Test File Naming Convention
-- **Unit tests:** `test_<component>.py`
-- **Data quality tests:** `test_<feature>_data_quality.py`
-- **Performance tests:** `test_<feature>_performance.py`
-- **Error handling tests:** `test_<feature>_error_scenarios.py`
-- **Integration tests:** `test_<feature>_integration.py`
-- **AASX tests:** `test_aasx_<feature>.py`
-- **Webapp tests:** `test_webapp_<feature>.py`
-
-### Test Structure
-```python
-#!/usr/bin/env python3
-"""
-Test description
-"""
-
-import sys
-import os
-
-# Add parent directory to path
-sys.path.append('..')
-
-def test_functionality():
-    """Test specific functionality"""
-    # Test implementation
-    pass
-
-if __name__ == "__main__":
-    test_functionality()
+============================================================
+Test Results: X/Y tests passed
+============================================================
+✅ Unit Tests: X/X passed
+✅ Data Quality Tests: X/X passed
+✅ AASX Tests: X/X passed
+✅ Web Application Tests: X/X passed
+✅ Performance Tests: X/X passed
+✅ Error Handling Tests: X/X passed
+✅ Integration Tests: X/X passed
+✅ Knowledge Graph Tests: X/X passed
+============================================================
+🎉 All tests passed! Framework is ready to use.
 ```
 
 ### Test Categories
-1. **Unit Tests:** Test individual functions/methods
-2. **Data Quality Tests:** Test data integrity and validation
-3. **Performance Tests:** Test speed and resource usage
-4. **Error Handling Tests:** Test failure scenarios
-5. **Integration Tests:** Test component interactions
-6. **AASX Tests:** Test AASX processing pipeline
-7. **Webapp Tests:** Test web application functionality
-
-## Continuous Integration
-
-### GitHub Actions
-```yaml
-- name: Run Tests
-  run: |
-    cd test
-    python run_all_tests.py
-```
-
-### Local Development
-```bash
-# Run tests before committing
-cd test
-python run_all_tests.py
-
-# Run specific test category
-python data_quality/test_aasx_data_quality.py
-```
-
-## Test Coverage
-
-### Current Coverage
-- ✅ **Unit Tests:** Full coverage
-- ✅ **Data Quality Tests:** Full coverage
-- ✅ **AASX Processing:** Full coverage
-- ✅ **.NET Bridge:** Full coverage
-- ✅ **Web Application:** Full coverage
-- ✅ **Performance:** Full coverage
-- ✅ **Error Handling:** Full coverage
-- ✅ **Integration:** Full coverage
-
-### Coverage Goals
-- **Unit Tests:** 90%+ coverage
-- **Data Quality Tests:** All data validation scenarios
-- **Performance Tests:** All performance thresholds
-- **Error Handling Tests:** All failure scenarios
-- **Integration Tests:** All major workflows
-- **AASX Tests:** All processing methods
-- **Webapp Tests:** All routes and endpoints
+- **Unit Tests**: Basic functionality and imports
+- **Data Quality Tests**: Data integrity and validation
+- **AASX Tests**: File processing and .NET integration
+- **Web Application Tests**: Routes and templates
+- **Performance Tests**: Speed and memory usage
+- **Error Handling Tests**: Failure scenarios
+- **Integration Tests**: Cross-module functionality
+- **Knowledge Graph Tests**: Neo4j integration
 
 ## Troubleshooting
 
-### Common Issues
-1. **Path Issues:** Ensure correct working directory
-2. **Import Errors:** Check Python path and dependencies
-3. **.NET Errors:** Verify .NET installation and build
-4. **File Permissions:** Check file access rights
-5. **Memory Issues:** Check available system memory
-6. **Performance Issues:** Check system resources
+### Common Test Issues
 
-### Debug Mode
+#### Import Errors
 ```bash
-# Enable debug logging
-export PYTHONPATH=.
-python -u test/data_quality/test_aasx_data_quality.py
+# Check Python path
+python -c "import sys; print(sys.path)"
+
+# Install missing packages
+pip install -r requirements.txt
 ```
 
-### Verbose Output
+#### Database Connection Errors
+```bash
+# Check Neo4j status
+docker ps | grep neo4j
+
+# Test connection
+python test/kg_neo4j/test_neo4j_connection.py
+```
+
+#### .NET Processor Errors
+```bash
+# Check .NET installation
+dotnet --version
+
+# Rebuild processor
+cd aas-processor
+dotnet build --configuration Release
+```
+
+### Debug Commands
+
+#### Verbose Test Output
 ```bash
 # Run with verbose output
-python -v test/performance/test_aasx_performance.py
+python -v test/unit/test_basic.py
+
+# Run with coverage
+python -m pytest test/ --cov=. --cov-report=html
 ```
 
----
+#### Individual Component Testing
+```bash
+# Test .NET bridge only
+python test/aasx/test_dotnet_bridge.py
 
-**Test Suite Version:** 2.0.0  
-**Last Updated:** July 8, 2025  
-**Status:** Production Ready with Comprehensive Coverage 
+# Test Neo4j connection only
+python test/kg_neo4j/test_neo4j_connection.py
+
+# Test web routes only
+python test/webapp/test_webapp_routes.py
+```
+
+## Continuous Integration
+
+### Automated Testing
+These tests can be integrated into CI/CD pipelines:
+
+```yaml
+# Example GitHub Actions step
+- name: Run Tests
+  run: |
+    python test/run_all_tests.py
+```
+
+### Test Dependencies
+- Python 3.8+
+- .NET 6.0 SDK
+- Neo4j database
+- Qdrant vector database
+- Required Python packages
+
+## Contributing
+
+### Adding New Tests
+1. Create test file in appropriate directory
+2. Follow existing naming conventions
+3. Include comprehensive test coverage
+4. Update this README with new test information
+5. Ensure tests pass before submitting
+
+### Test Standards
+- Use descriptive test names
+- Include setup and teardown
+- Test both success and failure cases
+- Provide clear error messages
+- Maintain test isolation 

@@ -1,342 +1,455 @@
 """
-Neo4j Knowledge Graph API Routes
-
-Provides REST API endpoints for the Neo4j knowledge graph frontend.
+Knowledge Graph API Routes
+Provides REST API endpoints for the Neo4j knowledge graph system
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
-import sys
-import os
+import logging
 from pathlib import Path
+import sys
 
-# Add backend to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent / "backend"))
+# Add backend to path
+sys.path.append(str(Path(__file__).parent.parent.parent / 'backend'))
 
-try:
-    from kg_neo4j import Neo4jManager, AASXGraphAnalyzer, CypherQueries
-except ImportError:
-    print("Warning: kg_neo4j module not available")
+from kg_neo4j.neo4j_manager import Neo4jManager
+from kg_neo4j.cypher_queries import CypherQueries
+from kg_neo4j.graph_analyzer import AASXGraphAnalyzer
 
-router = APIRouter(prefix="/api/kg-neo4j", tags=["Knowledge Graph - Neo4j"])
+logger = logging.getLogger(__name__)
 
-# Global Neo4j manager instance
+router = APIRouter()
+
+# Pydantic models for request/response
+class QueryRequest(BaseModel):
+    query: str
+
+class QueryResponse(BaseModel):
+    query: str
+    results: List[Dict[str, Any]]
+    execution_time: Optional[float] = None
+    error: Optional[str] = None
+
+class GraphStats(BaseModel):
+    node_count: int
+    relationship_count: int
+    node_labels: List[str]
+    relationship_types: List[str]
+    database_size: Optional[str] = None
+    last_updated: Optional[str] = None
+
+class SystemStatus(BaseModel):
+    status: str
+    neo4j_version: Optional[str] = None
+    graph_available: bool
+    gds_available: bool
+    last_updated: Optional[str] = None
+    error: Optional[str] = None
+
+class LoadDataRequest(BaseModel):
+    data_path: str
+    clear_existing: bool = False
+
+# Initialize Neo4j manager
 neo4j_manager = None
-analyzer = None
+cypher_queries = None
+graph_analyzer = None
 
 def get_neo4j_manager():
-    """Get or create Neo4j manager instance"""
-    global neo4j_manager
+    """Get or initialize Neo4j manager instance"""
+    global neo4j_manager, cypher_queries, graph_analyzer
     
     if neo4j_manager is None:
         try:
-            # Load environment variables
-            from dotenv import load_dotenv
-            load_dotenv()
+            # Initialize from environment variables
+            neo4j_uri = os.getenv('NEO4J_URI', 'neo4j://127.0.0.1:7687')
+            neo4j_user = os.getenv('NEO4J_USER', 'neo4j')
+            neo4j_password = os.getenv('NEO4J_PASSWORD', 'password')
             
-            uri = os.getenv('NEO4J_URI', 'neo4j://127.0.0.1:7687')
-            user = os.getenv('NEO4J_USER', 'neo4j')
-            password = os.getenv('NEO4J_PASSWORD', 'password')
+            neo4j_manager = Neo4jManager(neo4j_uri, neo4j_user, neo4j_password)
+            cypher_queries = CypherQueries(neo4j_manager)
+            graph_analyzer = AASXGraphAnalyzer(neo4j_uri, neo4j_user, neo4j_password)
             
-            neo4j_manager = Neo4jManager(uri, user, password)
+            logger.info("Neo4j manager initialized successfully")
         except Exception as e:
-            print(f"Error creating Neo4j manager: {e}")
-            return None
+            logger.error(f"Failed to initialize Neo4j manager: {e}")
+            raise HTTPException(status_code=500, detail="Failed to initialize Neo4j connection")
     
-    return neo4j_manager
+    return neo4j_manager, cypher_queries, graph_analyzer
 
-def get_analyzer():
-    """Get or create analyzer instance"""
-    global analyzer
+@router.get("/", response_class=HTMLResponse)
+async def kg_page(request: Request):
+    """Knowledge Graph main page"""
+    templates = Jinja2Templates(directory="webapp/templates")
+    return templates.TemplateResponse(
+        "kg_neo4j/index.html",
+        {
+            "request": request,
+            "title": "Knowledge Graph - QI Digital Platform"
+        }
+    )
+
+@router.post("/query", response_model=QueryResponse)
+async def execute_query(request: QueryRequest):
+    """
+    Execute a Cypher query
     
-    if analyzer is None:
-        manager = get_neo4j_manager()
-        if manager:
-            analyzer = AASXGraphAnalyzer(manager)
-    
-    return analyzer
-
-@router.get("/status")
-async def get_connection_status():
-    """Get Neo4j connection status"""
+    Args:
+        request: Query request with Cypher query string
+        
+    Returns:
+        Query results with execution details
+    """
     try:
-        manager = get_neo4j_manager()
-        if manager and manager.test_connection():
-            return {
-                "connected": True,
-                "message": "Successfully connected to Neo4j"
-            }
-        else:
-            return {
-                "connected": False,
-                "message": "Failed to connect to Neo4j"
-            }
-    except Exception as e:
-        return {
-            "connected": False,
-            "message": f"Error checking connection: {str(e)}"
-        }
-
-@router.get("/stats")
-async def get_database_stats():
-    """Get database statistics"""
-    try:
-        manager = get_neo4j_manager()
-        if not manager:
-            raise HTTPException(status_code=500, detail="Neo4j manager not available")
-        
-        if not manager.test_connection():
-            raise HTTPException(status_code=503, detail="Neo4j not connected")
-        
-        # Get basic stats
-        info = manager.get_database_info()
-        
-        # Get specific counts
-        asset_count = 0
-        submodel_count = 0
-        
-        try:
-            with manager.driver.session() as session:
-                # Count assets
-                result = session.run("MATCH (n:Asset) RETURN count(n) as count")
-                asset_count = result.single()['count']
-                
-                # Count submodels
-                result = session.run("MATCH (n:Submodel) RETURN count(n) as count")
-                submodel_count = result.single()['count']
-        except Exception as e:
-            print(f"Warning: Error getting specific counts: {e}")
-        
-        return {
-            "total_nodes": info.get('node_count', 0),
-            "total_relationships": info.get('relationship_count', 0),
-            "asset_count": asset_count,
-            "submodel_count": submodel_count,
-            "database_info": info
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting stats: {str(e)}")
-
-@router.get("/graph-data")
-async def get_graph_data():
-    """Get graph data for visualization"""
-    try:
-        manager = get_neo4j_manager()
-        if not manager:
-            raise HTTPException(status_code=500, detail="Neo4j manager not available")
-        
-        if not manager.test_connection():
-            raise HTTPException(status_code=503, detail="Neo4j not connected")
-        
-        # Get graph data from Neo4j
-        nodes = []
-        links = []
-        
-        with manager.driver.session() as session:
-            # Get all nodes with their properties
-            result = session.run("""
-                MATCH (n)
-                RETURN n.id as id, 
-                       labels(n) as labels,
-                       n.id_short as id_short,
-                       n.description as description,
-                       n.quality_level as quality_level,
-                       n.compliance_status as compliance_status
-            """)
-            
-            for record in result:
-                node_type = "unknown"
-                if "Asset" in record["labels"]:
-                    node_type = "asset"
-                elif "Submodel" in record["labels"]:
-                    node_type = "submodel"
-                
-                nodes.append({
-                    "id": record["id"],
-                    "type": node_type,
-                    "id_short": record["id_short"],
-                    "properties": {
-                        "description": record["description"],
-                        "quality_level": record["quality_level"],
-                        "compliance_status": record["compliance_status"]
-                    }
-                })
-            
-            # Get relationships
-            result = session.run("""
-                MATCH (a)-[r]->(b)
-                RETURN a.id as source, b.id as target, type(r) as type
-            """)
-            
-            for record in result:
-                links.append({
-                    "source": record["source"],
-                    "target": record["target"],
-                    "type": record["type"]
-                })
-        
-        return {
-            "success": True,
-            "data": {
-                "nodes": nodes,
-                "links": links
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting graph data: {str(e)}")
-
-@router.post("/query")
-async def execute_cypher_query(request: Dict[str, Any]):
-    """Execute a Cypher query"""
-    try:
-        manager = get_neo4j_manager()
-        if not manager:
-            raise HTTPException(status_code=500, detail="Neo4j manager not available")
-        
-        if not manager.test_connection():
-            raise HTTPException(status_code=503, detail="Neo4j not connected")
-        
-        query = request.get("query", "").strip()
-        if not query:
-            raise HTTPException(status_code=400, detail="Query is required")
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
         
         # Execute query
-        with manager.driver.session() as session:
-            result = session.run(query)
-            records = []
-            
-            for record in result:
-                # Convert Neo4j record to dict
-                record_dict = {}
-                for key, value in record.items():
-                    if hasattr(value, '__dict__'):
-                        # Handle Neo4j node/relationship objects
-                        record_dict[key] = dict(value)
-                    else:
-                        record_dict[key] = value
-                records.append(record_dict)
+        results = neo4j_mgr.execute_query(request.query)
         
-        return {
-            "success": True,
-            "results": records
-        }
+        return QueryResponse(
+            query=request.query,
+            results=results,
+            execution_time=None  # Could add timing if needed
+        )
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error executing query: {str(e)}")
+        logger.error(f"Query execution failed: {e}")
+        return QueryResponse(
+            query=request.query,
+            results=[],
+            error=str(e)
+        )
 
-@router.get("/analytics")
-async def get_analytics():
-    """Get analytics data"""
+@router.get("/stats", response_model=GraphStats)
+async def get_graph_stats():
+    """
+    Get knowledge graph statistics
+    
+    Returns:
+        Graph statistics including node counts, labels, and relationship types
+    """
     try:
-        analyzer = get_analyzer()
-        if not analyzer:
-            raise HTTPException(status_code=500, detail="Analyzer not available")
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
         
-        # Get analytics
-        analytics_data = analyzer.get_comprehensive_analytics()
+        # Get basic stats
+        node_count = neo4j_mgr.get_node_count()
+        relationship_count = neo4j_mgr.get_relationship_count()
+        node_labels = neo4j_mgr.get_node_labels()
+        relationship_types = neo4j_mgr.get_relationship_types()
         
-        return {
-            "success": True,
-            "analytics": analytics_data
-        }
+        return GraphStats(
+            node_count=node_count,
+            relationship_count=relationship_count,
+            node_labels=node_labels,
+            relationship_types=relationship_types,
+            database_size=None,  # Could add if needed
+            last_updated=None    # Could add if needed
+        )
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting analytics: {str(e)}")
+        logger.error(f"Failed to get graph stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get graph stats: {str(e)}")
 
-@router.post("/import")
-async def import_graph_data(request: Dict[str, Any]):
-    """Import graph data from ETL output"""
+@router.get("/status", response_model=SystemStatus)
+async def get_system_status():
+    """
+    Get Neo4j system status
+    
+    Returns:
+        System status including connection and feature availability
+    """
     try:
-        manager = get_neo4j_manager()
-        if not manager:
-            raise HTTPException(status_code=500, detail="Neo4j manager not available")
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
         
-        if not manager.test_connection():
-            raise HTTPException(status_code=503, detail="Neo4j not connected")
+        # Test connection
+        connection_ok = neo4j_mgr.test_connection()
         
-        directory = request.get("directory", "output/etl_results")
-        clear_database = request.get("clear_database", False)
+        # Check GDS availability
+        gds_available = False
+        try:
+            gds_available = neo4j_mgr.check_gds_availability()
+        except Exception:
+            pass
         
-        # Validate directory
-        import_dir = Path(directory)
-        if not import_dir.exists():
-            raise HTTPException(status_code=400, detail=f"Directory not found: {directory}")
+        # Get Neo4j version
+        neo4j_version = None
+        try:
+            version_result = neo4j_mgr.execute_query("CALL dbms.components() YIELD name, versions, edition RETURN name, versions[0] as version, edition")
+            if version_result:
+                neo4j_version = version_result[0].get('version', 'Unknown')
+        except Exception:
+            pass
         
-        # Clear database if requested
-        if clear_database:
-            with manager.driver.session() as session:
-                session.run("MATCH (n) DETACH DELETE n")
+        return SystemStatus(
+            status="connected" if connection_ok else "disconnected",
+            neo4j_version=neo4j_version,
+            graph_available=connection_ok,
+            gds_available=gds_available,
+            last_updated=None
+        )
         
-        # Import graph files
-        graph_files = list(import_dir.rglob("*_graph.json"))
-        if not graph_files:
-            raise HTTPException(status_code=400, detail="No graph files found in directory")
+    except Exception as e:
+        logger.error(f"Failed to get system status: {e}")
+        return SystemStatus(
+            status="error",
+            graph_available=False,
+            gds_available=False,
+            error=str(e)
+        )
+
+@router.post("/load-data")
+async def load_graph_data(request: LoadDataRequest):
+    """
+    Load graph data from ETL output
+    
+    Args:
+        request: Load data request with path and options
         
-        imported_files = 0
-        total_nodes = 0
-        total_relationships = 0
+    Returns:
+        Loading status and statistics
+    """
+    try:
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
         
-        for graph_file in graph_files:
-            try:
-                manager.import_graph_file(graph_file)
-                imported_files += 1
-                
-                # Get stats for this file
-                with open(graph_file, 'r') as f:
-                    import json
-                    data = json.load(f)
-                    if 'nodes' in data:
-                        total_nodes += len(data['nodes'])
-                    if 'edges' in data:
-                        total_relationships += len(data['edges'])
-                        
-            except Exception as e:
-                print(f"Warning: Error importing {graph_file}: {e}")
+        # Load data from ETL output
+        stats = neo4j_mgr.load_etl_data(
+            etl_output_dir=request.data_path,
+            clear_existing=request.clear_existing
+        )
         
         return {
-            "success": True,
-            "imported_files": imported_files,
-            "nodes_imported": total_nodes,
-            "relationships_imported": total_relationships,
-            "message": f"Successfully imported {imported_files} files"
+            "message": "Graph data loaded successfully",
+            "stats": stats,
+            "status": "success"
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error importing data: {str(e)}")
+        logger.error(f"Failed to load graph data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load graph data: {str(e)}")
+
+@router.get("/analysis")
+async def run_graph_analysis():
+    """
+    Run comprehensive graph analysis
+    
+    Returns:
+        Analysis results including network statistics and distributions
+    """
+    try:
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
+        
+        # Run various analyses
+        analysis_results = {
+            "network_statistics": analyzer.get_network_statistics().to_dict('records'),
+            "quality_distribution": analyzer.get_quality_distribution().to_dict('records'),
+            "compliance_analysis": analyzer.analyze_compliance_network().to_dict('records'),
+            "entity_distribution": analyzer.get_entity_type_distribution().to_dict('records'),
+            "relationship_analysis": analyzer.analyze_relationships().to_dict('records'),
+            "isolated_nodes": analyzer.find_isolated_nodes().to_dict('records'),
+            "connected_components": analyzer.get_connected_components().to_dict('records')
+        }
+        
+        return {
+            "analysis": analysis_results,
+            "status": "completed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Graph analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Graph analysis failed: {str(e)}")
+
+@router.get("/graph")
+async def get_graph_data(limit: int = 100):
+    """
+    Get graph data for visualization
+    
+    Args:
+        limit: Maximum number of nodes to return
+        
+    Returns:
+        Graph data in format suitable for visualization
+    """
+    try:
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
+        
+        # Get graph data
+        graph_data = neo4j_mgr.get_graph_for_visualization(limit=limit)
+        
+        return {
+            "nodes": graph_data.get('nodes', []),
+            "relationships": graph_data.get('relationships', []),
+            "total_nodes": len(graph_data.get('nodes', [])),
+            "total_relationships": len(graph_data.get('relationships', []))
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get graph data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get graph data: {str(e)}")
+
+@router.get("/labels")
+async def get_node_labels():
+    """
+    Get all node labels in the graph
+    
+    Returns:
+        List of node labels with counts
+    """
+    try:
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
+        
+        labels = neo4j_mgr.get_node_labels_with_counts()
+        
+        return {
+            "labels": labels,
+            "total_labels": len(labels)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get node labels: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node labels: {str(e)}")
+
+@router.get("/relationship-types")
+async def get_relationship_types():
+    """
+    Get all relationship types in the graph
+    
+    Returns:
+        List of relationship types with counts
+    """
+    try:
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
+        
+        types = neo4j_mgr.get_relationship_types_with_counts()
+        
+        return {
+            "relationship_types": types,
+            "total_types": len(types)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get relationship types: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get relationship types: {str(e)}")
+
+@router.get("/sample-queries")
+async def get_sample_queries():
+    """
+    Get sample Cypher queries for common operations
+    
+    Returns:
+        List of sample queries organized by category
+    """
+    sample_queries = {
+        "basic": [
+            {
+                "name": "All Nodes",
+                "query": "MATCH (n) RETURN n LIMIT 10",
+                "description": "Get all nodes in the graph"
+            },
+            {
+                "name": "All Relationships",
+                "query": "MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 10",
+                "description": "Get all relationships in the graph"
+            },
+            {
+                "name": "Node Labels",
+                "query": "CALL db.labels() YIELD label RETURN label",
+                "description": "Get all node labels"
+            },
+            {
+                "name": "Relationship Types",
+                "query": "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType",
+                "description": "Get all relationship types"
+            }
+        ],
+        "assets": [
+            {
+                "name": "All Assets",
+                "query": "MATCH (n:Asset) RETURN n LIMIT 10",
+                "description": "Get all asset nodes"
+            },
+            {
+                "name": "Asset Properties",
+                "query": "MATCH (n:Asset) RETURN n.id, n.id_short, n.description LIMIT 10",
+                "description": "Get asset properties"
+            },
+            {
+                "name": "Assets with Submodels",
+                "query": "MATCH (a:Asset)-[:HAS_SUBMODEL]->(s:Submodel) RETURN a, s LIMIT 10",
+                "description": "Get assets and their submodels"
+            }
+        ],
+        "submodels": [
+            {
+                "name": "All Submodels",
+                "query": "MATCH (n:Submodel) RETURN n LIMIT 10",
+                "description": "Get all submodel nodes"
+            },
+            {
+                "name": "Submodel Types",
+                "query": "MATCH (n:Submodel) RETURN DISTINCT n.submodel_type",
+                "description": "Get distinct submodel types"
+            },
+            {
+                "name": "Submodel Properties",
+                "query": "MATCH (n:Submodel) RETURN n.id, n.id_short, n.submodel_type LIMIT 10",
+                "description": "Get submodel properties"
+            }
+        ],
+        "analysis": [
+            {
+                "name": "Node Count by Label",
+                "query": "CALL db.labels() YIELD label CALL apoc.cypher.run('MATCH (n:' + label + ') RETURN count(n) as count', {}) YIELD value RETURN label, value.count as count",
+                "description": "Count nodes by label"
+            },
+            {
+                "name": "Relationship Count by Type",
+                "query": "CALL db.relationshipTypes() YIELD relationshipType CALL apoc.cypher.run('MATCH ()-[r:' + relationshipType + ']->() RETURN count(r) as count', {}) YIELD value RETURN relationshipType, value.count as count",
+                "description": "Count relationships by type"
+            },
+            {
+                "name": "Isolated Nodes",
+                "query": "MATCH (n) WHERE NOT (n)--() RETURN n LIMIT 10",
+                "description": "Find nodes with no relationships"
+            }
+        ]
+    }
+    
+    return {
+        "sample_queries": sample_queries,
+        "categories": list(sample_queries.keys())
+    }
 
 @router.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """
+    Health check for knowledge graph system
+    
+    Returns:
+        System health status
+    """
     try:
-        manager = get_neo4j_manager()
-        if manager and manager.test_connection():
-            return {
-                "status": "healthy",
-                "neo4j": "connected",
-                "message": "Knowledge Graph service is running"
-            }
-        else:
-            return {
-                "status": "degraded",
-                "neo4j": "disconnected",
-                "message": "Neo4j connection failed"
-            }
+        neo4j_mgr, cypher, analyzer = get_neo4j_manager()
+        
+        # Test connection
+        connection_ok = neo4j_mgr.test_connection()
+        
+        health_status = {
+            "status": "healthy" if connection_ok else "unhealthy",
+            "neo4j_connected": connection_ok,
+            "database_accessible": connection_ok,
+            "timestamp": None  # Could add current timestamp
+        }
+        
+        return health_status
+        
     except Exception as e:
+        logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
-            "neo4j": "error",
-            "message": f"Service error: {str(e)}"
+            "neo4j_connected": False,
+            "database_accessible": False,
+            "error": str(e)
         } 

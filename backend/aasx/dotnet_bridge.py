@@ -26,8 +26,17 @@ class DotNetAasBridge:
             dotnet_project_path: Path to the .NET AAS processor project
         """
         # Get the absolute path to the .NET project
-        current_dir = Path(__file__).parent.parent.parent  # Go up from webapp/aasx/dotnet_bridge.py
+        current_dir = Path(__file__).parent.parent.parent  # Go up from backend/aasx/dotnet_bridge.py
         self.dotnet_project_path = current_dir / dotnet_project_path
+        
+        # Check for environment variable override
+        env_path = os.getenv('AAS_PROCESSOR_PATH')
+        if env_path:
+            self.processor_exe = Path(env_path)
+            if self.processor_exe.exists():
+                logger.info(f"Using .NET processor from environment: {self.processor_exe}")
+                return
+        
         self.processor_exe = None
         self._build_processor()
     

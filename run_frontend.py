@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple Frontend Runner for QI Digital Platform
+Simple Frontend Runner for AASX Digital Twin Analytics Framework
 Just runs the FastAPI webapp without complex orchestration
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 def main():
     """Run the frontend webapp"""
-    print("🚀 Starting QI Digital Platform Frontend")
+    print("🚀 Starting AASX Digital Twin Analytics Framework")
     print("=" * 50)
     
     # Check if webapp directory exists
